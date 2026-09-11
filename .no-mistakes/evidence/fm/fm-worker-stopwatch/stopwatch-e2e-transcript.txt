@@ -1,0 +1,91 @@
+
+================================================================
+1  Firstmate scaffolds a real crewmate brief
+================================================================
+scaffolded: /tmp/fm-clockrun.g0Gemn/home/data/ios-release-1/brief.md (ship, mode=no-mistakes; replace {TASK} and {FIRSTMATE_SPEC})
+scaffolded: /tmp/fm-clockrun.g0Gemn/home/data/scout-search-1/brief.md (scout; replace {TASK} and {FIRSTMATE_SPEC})
+scaffolded: /tmp/fm-clockrun.g0Gemn/home/data/sm-alpha/brief.md (secondmate charter)
+
+================================================================
+2  The status-protocol rule the SHIP brief now carries
+================================================================
+   Every line you do append while the work is still under way carries your own stopwatch:
+   name the slowest step you have already finished and the wall-clock seconds it really took,
+   then say how many more runs of that step you still expect. Write both into the sentence
+   rather than into a form, for example
+   `working: fault reproduced, the full test run took 512s, 2 more runs expected`.
+   Time the step rather than estimating it, and when nothing long has run yet write
+   "no long step yet" instead of inventing a number.
+   Firstmate cannot see your clock and multiplies those two numbers into the estimate it
+   gives the captain, so a line without them leaves that estimate a guess.
+
+================================================================
+3  The SCOUT brief carries the identical requirement
+================================================================
+   Every line you do append while the work is still under way carries your own stopwatch:
+   name the slowest step you have already finished and the wall-clock seconds it really took,
+   then say how many more runs of that step you still expect. Write both into the sentence
+   rather than into a form, for example
+   `working: fault reproduced, the full test run took 512s, 2 more runs expected`.
+   Time the step rather than estimating it, and when nothing long has run yet write
+   "no long step yet" instead of inventing a number.
+   Firstmate cannot see your clock and multiplies those two numbers into the estimate it
+   gives the captain, so a line without them leaves that estimate a guess.
+
+================================================================
+4  The SECONDMATE charter is deliberately exempt (standing domain, no slow step)
+================================================================
+matches for "stopwatch" in the charter: 0
+
+================================================================
+5  The worker obeys the brief and appends to its own status log
+================================================================
+working: worktree verified, no long step yet
+working: release build verified on the simulator, the full check gate took 512s, 2 more runs expected
+
+================================================================
+6  Firstmate reads it: bin/fm-crew-state.sh (idle pane, no attributed run)
+================================================================
+state: working · source: status-log · release build verified on the simulator, the full check gate took 512s, 2 more runs expected
+
+================================================================
+7  The classifier reads the line unchanged: bin/fm-bearings-snapshot.sh
+================================================================
+schema: fm-bearings.v1
+home: fm-clockrun.g0Gemn/home
+generated: "2026-09-11T16:12:08Z"
+prs: "not_requested (run: /bearings include PRs)"
+in_flight[1]{id,kind,state,repo,doing}:
+  ios-release-1,ship,working,acme-ios,"release build verified on the simulator, the full check gate took 512s, 2 more runs expect…"
+secondmates: []
+secondmate_reconcile: []
+decisions_open: []
+landed: []
+gates: []
+reports: []
+recorded_prs: []
+omitted[6]{surface,reveal}:
+
+NOTE: the bearings 'doing' field truncates at 90 chars and eats the remaining count.
+      That is why the shipped skill sends part (d) to the status log and nowhere else.
+
+================================================================
+8  Adversarial: the same worker six minutes into its no-mistakes run
+================================================================
+bin/fm-crew-state.sh   -> state: working · source: run-step · validating (running)
+bearings 'doing'       -> validating (running)
+tail -1 state/<id>.status -> working: release build verified on the simulator, the full check gate took 512s, 2 more runs expected
+
+Both derived readers lose the numbers on this path; the status log keeps them whole.
+
+================================================================
+9  Adversarial: a careless worker hangs the stopwatch on a needs-decision line
+================================================================
+plain needs-decision:
+  verb=needs-decision open_decisions=[default	needs-decision	which signing identity?]
+same decision carrying the stopwatch numbers:
+  verb=needs-decision open_decisions=[default	needs-decision	which signing identity? the notarization pass took 640s, 3 more runs expected]
+stopwatch decision followed by a stopwatch working line (must stay open):
+  verb=needs-decision open_decisions=[default	needs-decision	which signing identity? the notarization pass took 640s, 3 more runs expected]
+the honest no-measurement answer:
+  verb=working open_decisions=[]

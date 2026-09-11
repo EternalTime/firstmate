@@ -1,0 +1,16 @@
+Drift guard regression: test_codexapp_status_block_tracks_the_brief_stopwatch
+A Codex Desktop thread never receives a generated brief, so its SKILL.md status
+block is a hand copy of what bin/fm-brief.sh owns. Nothing but this test keeps
+them in step. Proof it is not vacuous:
+
+--- (a) unmutated tree ---
+tests/fm-brief.test.sh exit=0
+
+--- (b) a future author rewords ONLY the bin/fm-brief.sh scaffold ---
+tests/fm-brief.test.sh exit=1
+not ok - /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-brief.pn2aPN/stopwatch-home/data/brief-clock-s1/brief.md: brief did not require a remaining count firstmate can multiply
+
+--- (c) a future author rewords ONLY the Codex Desktop copy ---
+tests/fm-brief.test.sh exit=1
+ok - fm-brief.sh: crewmate briefs require a measured cost and a remaining count
+not ok - drift: the brief bin/fm-brief.sh generates says "working: fault reproduced, the full test run took 512s, 2 more runs expected", but .agents/skills/firstmate-codexapp/SKILL.md no longer says "working: fault reproduced, the full test run took 512s, 2 more runs expected" - a Codex Desktop thread receives no brief, so that block is the only place this requirement reaches it
