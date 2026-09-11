@@ -1,0 +1,51 @@
+==============================================================================
+ LIVE DRIVE 3 - an unconfigured home is byte-identical to the pre-change code
+==============================================================================
+
+The base commit's own scripts were checked out beside the branch's, and both
+were run against the SAME home, with the clock pinned so only code differs.
+
+  base:   git archive e0d269e  ->  <tmp>/base/bin/fm-*.sh   (no fm-running-time-lib.sh)
+  branch: bin/fm-*.sh                                        (flag ABSENT)
+
+$ diff base-fleet.json new-fleet-off.json          # canonical snapshot, --json
+  (no differences)
+  -> identical after normalizing roots.fm_root, which only records where the
+     script itself lives (the base checkout vs the branch worktree).
+
+$ diff base-bearings.toon new-bearings-off.toon    # the report the captain reads
+  (no differences at all)
+
+--- and with the flag present, the ONLY delta is the new surface -------------
+
+$ diff new-fleet-off.json new-fleet-on.json
+  --- /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-live-drive.SJJJnu/new-fleet-off.n.json	2026-09-11 13:06:15
+  +++ /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-live-drive.SJJJnu/new-fleet-on.n.json	2026-09-11 13:06:15
+  @@ -63,6 +63,9 @@
+         "yolo": "off",
+         "project": "/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-live-drive.SJJJnu/case/project",
+         "spawn_gen": "s1789146320.58360.10196",
+  +      "runtime": {
+  +        "running_seconds": null
+  +      },
+         "backend": "tmux",
+         "remote": null,
+         "paths": {
+
+$ diff new-bearings-off.toon new-bearings-on.toon
+  --- /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-live-drive.SJJJnu/new-bearings-off.toon	2026-09-11 13:06:04
+  +++ /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-live-drive.SJJJnu/new-bearings-on.toon	2026-09-11 13:06:15
+  @@ -2,8 +2,8 @@
+   home: case/home
+   generated: "2026-09-11T17:00:00Z"
+   prs: "not_requested (run: /bearings include PRs)"
+  -in_flight[1]{id,kind,state,repo,doing}:
+  -  live-ship,ship,working,firstmate,harness busy (claude-hook)
+  +in_flight[1]{id,kind,state,repo,running,doing}:
+  +  live-ship,ship,working,firstmate,unknown,harness busy (claude-hook)
+   secondmates: []
+   secondmate_reconcile: []
+   decisions_open: []
+
+  (this pinned run observes at an epoch BEFORE the real spawn, so the future-
+   start guard renders 'unknown' rather than a negative elapsed time.)

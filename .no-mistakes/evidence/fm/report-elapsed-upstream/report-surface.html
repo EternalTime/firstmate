@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>firstmate - worker running time, driven live</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; min-width: 0; }
+  body { margin:0; padding:40px 32px 56px; background:#0d1117; color:#c9d1d9;
+         font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+  .wrap { max-width:1120px; margin:0 auto; }
+  h1 { font-size:24px; margin:0 0 6px; color:#f0f6fc; letter-spacing:-.01em; }
+  .sub { color:#8b949e; margin:0 0 4px; font-size:14px; }
+  .meta { color:#6e7681; font-size:12.5px; margin:0 0 32px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:#8b949e;
+        margin:34px 0 12px; font-weight:600; }
+  .grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; }
+  @media (max-width:900px) { .grid { grid-template-columns:minmax(0,1fr); } }
+  .card { border:1px solid #21262d; border-radius:10px; background:#010409; overflow:hidden; min-width:0; }
+  .card > header { display:flex; align-items:center; gap:8px; padding:9px 14px;
+      background:#161b22; border-bottom:1px solid #21262d; font-size:12.5px; color:#8b949e; }
+  .dot { width:9px; height:9px; border-radius:50%; flex:0 0 auto; }
+  .off .dot { background:#484f58; } .on .dot { background:#3fb950; }
+  .card > header b { color:#c9d1d9; font-weight:600; }
+  pre { margin:0; padding:14px; font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
+         color:#adbac7; overflow-x:auto; white-space:pre; }
+  .hl { background:#1f6feb33; color:#79c0ff; border-radius:3px; padding:0 2px; font-weight:600; }
+  .val { color:#3fb950; font-weight:600; }
+  .note { color:#8b949e; font-size:13px; margin:10px 2px 0; }
+  code { font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace; background:#161b22;
+          border:1px solid #21262d; border-radius:4px; padding:1px 5px; color:#c9d1d9; }
+</style></head><body><div class="wrap">
+<h1>Underway now reports how long each worker has been running</h1>
+<p class="sub">Every pane below is real output from <code>bin/fm-bearings-snapshot.sh</code>, driven against isolated
+firstmate homes at real wall-clock time. The worker in the first pair was spawned by the real
+<code>bin/fm-spawn.sh</code>.</p>
+<p class="meta">Branch fm/report-elapsed-upstream &middot; captured 2026-09-11</p>
+
+<h2>1 &nbsp;The setting is off until the home asks for it</h2>
+<div class="grid">
+  <div class="card off"><header><span class="dot"></span><b>config/worker-running-time</b> absent &mdash; unchanged from before</header>
+  <pre>schema: fm-bearings.v1
+home: case/home
+generated: &quot;2026-09-11T17:16:36Z&quot;
+prs: &quot;not_requested (run: /bearings include PRs)&quot;
+in_flight[1]{id,kind,state,repo,doing}:
+  live-ship,ship,working,firstmate,harness busy (claude-hook)
+secondmates: []</pre></div>
+  <div class="card on"><header><span class="dot"></span><b>config/worker-running-time</b> present</header>
+  <pre>schema: fm-bearings.v1
+home: case/home
+generated: &quot;2026-09-11T17:16:36Z&quot;
+prs: &quot;not_requested (run: /bearings include PRs)&quot;
+in_flight[1]{id,kind,state,repo,<span class="hl">running</span>,doing}:
+  live-ship,ship,working,firstmate,<span class="val">11m</span>,harness busy (claude-hook)
+secondmates: []</pre></div>
+</div>
+<p class="note">Left is byte-identical to what the base commit's own script prints for the same home.
+The only thing the flag adds is the <span class="hl">running</span> column.</p>
+
+<h2>2 &nbsp;Where no start is recorded, the report says so plainly</h2>
+<div class="card on"><header><span class="dot"></span>14 workers, every <code>spawn_gen</code> shape a durable record can hold</header>
+<pre>in_flight[14]{id,kind,state,repo,<span class="hl">running</span>,doing}:
+  a-real,ship,working,firstmate,<span class="val">10m</span>,harness busy (claude-hook)
+  b-minutes,ship,working,firstmate,<span class="val">23m</span>,harness busy (claude-hook)
+  c-hours,ship,working,firstmate,<span class="val">1h 23m</span>,harness busy (claude-hook)
+  d-days,ship,working,firstmate,<span class="val">2d 3h</span>,harness busy (claude-hook)
+  e-zeropadded,ship,working,firstmate,<span class="val">10m</span>,harness busy (claude-hook)
+  f-no-token,ship,working,firstmate,<span class="val">unknown</span>,harness busy (claude-hook)
+  g-legacy,ship,working,firstmate,<span class="val">unknown</span>,harness busy (claude-hook)
+  h-future,ship,working,firstmate,<span class="val">unknown</span>,harness busy (claude-hook)
+  i-overflow,ship,working,firstmate,<span class="val">unknown</span>,harness busy (claude-hook)
+  j-negative,ship,working,firstmate,<span class="val">unknown</span>,harness busy (claude-hook)
+  k-empty-value,ship,working,firstmate,<span class="val">unknown</span>,harness busy (claude-hook)
+  l-garbage,ship,working,firstmate,<span class="val">unknown</span>,harness busy (claude-hook)
+  m-nodots,ship,working,firstmate,<span class="val">10m</span>,harness busy (claude-hook)
+  n-floaty,ship,working,firstmate,<span class="val">20707d 17h</span>,harness busy (claude-hook)</pre></div>
+<p class="note">A missing token, the teardown's <code>legacy-&hellip;</code> stamp, a start dated after the observation,
+a 20-digit epoch, a negative one, and plain garbage all read <code>unknown</code>. None of them is
+dropped, guessed at, or allowed to cost the snapshot.</p>
+
+<h2>3 &nbsp;A second mate's children are timed by the home that owns them</h2>
+<div class="card on"><header><span class="dot"></span>primary home, with one registered second mate</header>
+<pre>in_flight[3]{id,kind,state,repo,<span class="hl">running</span>,doing}:
+  local-ship,ship,working,firstmate,<span class="val">8m</span>,harness busy (claude-hook)
+  domain-alpha/phase8,ship,working,sample,<span class="val">1h 22m</span>,harness busy (claude-hook)
+  domain-alpha/phase9,ship,working,sample,<span class="val">unknown</span>,harness busy (claude-hook)</pre></div>
+<p class="note">The flag reached the second mate through the ordinary inheritance push, so
+<code>domain-alpha/phase8</code> carries the elapsed time its own home measured. <code>phase9</code> has no
+recorded start there, so it reads <code>unknown</code>.</p>
+</div></body></html>

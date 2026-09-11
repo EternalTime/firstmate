@@ -1,0 +1,43 @@
+==============================================================================
+ LIVE DRIVE 1 - a real worker spawned by bin/fm-spawn.sh, reported at real time
+==============================================================================
+
+$ bin/fm-spawn.sh live-ship <project> --mode no-mistakes --yolo off
+  spawned live-ship harness=claude kind=ship mode=no-mistakes window=firstmate:fm-live-ship
+
+$ grep '^spawn_gen=' state/live-ship.meta          # written by the real spawn
+spawn_gen=s1789146320.58360.10196
+  -> spawn epoch 1789146320 = 2026-09-11T17:05:20Z (real wall clock)
+
+--- (a) the home has configured nothing: no running column, as before ---------
+$ ls config/ ; bin/fm-bearings-snapshot.sh
+  crew-harness
+  schema: fm-bearings.v1
+  home: case/home
+  generated: "2026-09-11T17:14:20Z"
+  prs: "not_requested (run: /bearings include PRs)"
+  in_flight[1]{id,kind,state,repo,doing}:
+    live-ship,ship,working,firstmate,harness busy (claude-hook)
+  secondmates: []
+
+--- (b) the home opts in: touch config/worker-running-time -------------------
+$ : > config/worker-running-time ; bin/fm-bearings-snapshot.sh
+  schema: fm-bearings.v1
+  home: case/home
+  generated: "2026-09-11T17:14:20Z"
+  prs: "not_requested (run: /bearings include PRs)"
+  in_flight[1]{id,kind,state,repo,running,doing}:
+    live-ship,ship,working,firstmate,9m,harness busy (claude-hook)
+  secondmates: []
+
+$ bin/fm-fleet-snapshot.sh --json | jq '.tasks[] | {id, spawn_gen, runtime}'
+  {
+    "id": "live-ship",
+    "spawn_gen": "s1789146320.58360.10196",
+    "runtime": {
+      "running_seconds": 540
+    }
+  }
+
+--- (c) the clock is real: the same worker, sampled again -------------------
+  sampled 17:14:21Z -> live-ship,ship,working,firstmate,9m,harness busy (claude-hook)

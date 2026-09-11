@@ -1,0 +1,24 @@
+==============================================================================
+ LIVE DRIVE 6 - a relaunch restarts the clock on the new incarnation
+==============================================================================
+
+docs/configuration.md says the figure measures the worker's CURRENT
+incarnation, not the whole life of the task. Driven through the real
+replace-the-agent verb, bin/fm-control.sh <id> relaunch.
+
+  ### BEFORE the relaunch - the prior incarnation started 2d 3h ago
+  {"id":"rt1","spawn_gen":"s1788963375.999.1","running_seconds":183600}
+  in_flight[1]{id,kind,state,repo,running,doing}:
+    rt1,ship,working,<case>/proj,2d 3h,harness busy (claude-hook)
+  
+  ### real relaunch through bin/fm-control.sh
+  warning: <case>/home/data/rt1/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+  relaunched rt1 harness=claude from=claude model=default effort=default backend=tmux endpoint=fmses:fm-rt1 worktree=<case>/wt
+  
+  ### AFTER the relaunch - a fresh token, so the clock measures the NEW incarnation
+  {"id":"rt1","spawn_gen":"s1789146977.81370.2941","running_seconds":1}
+  in_flight[1]{id,kind,state,repo,running,doing}:
+    rt1,ship,working,<case>/proj,2s,harness busy (fm-spawn)
+
+  -> the task never moved and the endpoint was reused, but the elapsed time
+     restarted with the replacement agent.

@@ -1,0 +1,61 @@
+==============================================================================
+ LIVE DRIVE 4 - the setting is a home setting: it converges to second mates
+==============================================================================
+
+A primary firstmate home with one registered local second mate. The second
+mate owns two children of its own: phase8 has a recorded start, phase9 has none.
+
+--- the primary turns the setting on, then converges it --------------------
+$ ls mate/config/            # before
+  (empty)
+
+$ bin/fm-config-push.sh
+  config-push: /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-live-drive.SJJJnu/secondmate/primary -> live secondmate homes
+  secondmate domain-alpha (/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-live-drive.SJJJnu/secondmate/mate):
+    crew-dispatch.json: unchanged
+    crew-harness: unchanged
+    backlog-backend: unchanged
+    backend: unchanged
+    herdr-presentation-spaces: unchanged
+    startup-memory-budget: unchanged
+    trace-context: unchanged - session-scoped
+    launch-env-allowlist: unchanged
+    worker-running-time: pushed
+    data/captain-shared.md: unchanged
+  CONFIG_REREAD: secondmate domain-alpha: send failed: error: no-mistakes gate agent must not drive the fleet (NO_MISTAKES_GATE set)
+
+$ ls mate/config/            # after
+  worker-running-time
+
+--- the child's running time is measured by the home that OWNS the child ----
+$ jq '.active_children[]' mate/state/home-summary.json     # the mate's own ledger
+  {"id":"phase8","running_seconds":4872}
+  {"id":"phase9","running_seconds":null}
+
+$ bin/fm-bearings-snapshot.sh   (run in the PRIMARY home)
+  in_flight[3]{id,kind,state,repo,running,doing}:
+    local-ship,ship,working,firstmate,7m,harness busy (claude-hook)
+    domain-alpha/phase8,ship,working,sample,1h 21m,harness busy (claude-hook)
+    domain-alpha/phase9,ship,working,sample,unknown,harness busy (claude-hook)
+  -> the child row carries the elapsed time its own home recorded, and the
+     child with no recorded start reads 'unknown' rather than a guess.
+
+--- adversarial: the primary is on but the mate has not converged yet -------
+$ jq '.active_children[]|has("running_seconds")' mate/state/home-summary.json
+  [false,false]
+$ bin/fm-bearings-snapshot.sh   (PRIMARY - local row has a value, child rows do not)
+  in_flight[3]{id,kind,state,repo,running,doing}:
+    local-ship,ship,working,firstmate,7m,harness busy (claude-hook)
+    domain-alpha/phase8,ship,working,sample,unknown,harness busy (claude-hook)
+    domain-alpha/phase9,ship,working,sample,unknown,harness busy (claude-hook)
+  -> the local row and both child rows still share ONE column set. The TOON
+     encoder takes its columns from the first row, so a producer disagreeing
+     with the projection would silently misalign every row after it.
+
+--- adversarial: the mate is on but the primary is not ----------------------
+$ bin/fm-bearings-snapshot.sh   (PRIMARY)
+  in_flight[3]{id,kind,state,repo,doing}:
+    local-ship,ship,working,firstmate,harness busy (claude-hook)
+    domain-alpha/phase8,ship,working,sample,harness busy (claude-hook)
+    domain-alpha/phase9,ship,working,sample,harness busy (claude-hook)
+  -> no running column anywhere: the home reading the report decides.

@@ -1,0 +1,21 @@
+==============================================================================
+ LIVE DRIVE 5 - one expression decides the flag for BOTH producers
+==============================================================================
+
+bin/fm-running-time-lib.sh exists so the canonical snapshot and the projection
+can never disagree about the flag. Driven under every override form firstmate
+supports, checking the two ends of one invocation against each other.
+
+  OVERRIDES / FLAG LOCATION                                fleet: rows w/ runtime   bearings: Underway columns
+  -------------------------------------------------------- ------------------------ --------------------------
+  FM_HOME only, flag nowhere                               0 / 14                   {id,kind,state,repo,doing}:
+  FM_HOME only, flag in FM_HOME/config                     14 / 14                  {id,kind,state,repo,running,doing}:
+  FM_CONFIG_OVERRIDE=alt HAS it, FM_HOME/config does not   14 / 14                  {id,kind,state,repo,running,doing}:
+  FM_CONFIG_OVERRIDE=alt lacks it, FM_HOME/config HAS it   0 / 14                   {id,kind,state,repo,doing}:
+  FM_ROOT_OVERRIDE only (no FM_HOME), flag nowhere         0 / 14                   {id,kind,state,repo,doing}:
+  FM_ROOT_OVERRIDE only (no FM_HOME), flag present         14 / 14                  {id,kind,state,repo,running,doing}:
+
+  Both ends agree in every row. FM_CONFIG_OVERRIDE wins over FM_HOME for both,
+  and FM_ROOT_OVERRIDE stands in for FM_HOME for both - there is no override
+  form under which the producer emits runtime and the projection drops the
+  column, or the reverse.

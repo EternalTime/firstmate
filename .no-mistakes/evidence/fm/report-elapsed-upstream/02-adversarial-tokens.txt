@@ -1,0 +1,72 @@
+==============================================================================
+ LIVE DRIVE 2 - adversarial spawn_gen tokens against the real snapshot
+==============================================================================
+
+One opted-in home, 14 in-flight workers, every token shape the durable record
+can actually hold, sampled at real wall clock.
+
+$ bin/fm-fleet-snapshot.sh --json   (exit code and derived value per token)
+  snapshot exit=0
+
+  TASK           spawn_gen in state/<id>.meta  running_seconds
+  a-real         s1789146355.111.1             523
+  b-minutes      s1789145560.111.2             1318
+  c-hours        s1789141960.111.3             4918
+  d-days         s1788962800.111.4             184078
+  e-zeropadded   s01789146355.111.5            523
+  f-no-token     (no spawn_gen line)           null
+  g-legacy       legacy-20260911T170000Z-4242  null
+  h-future       s1789147000.111.6             null
+  i-overflow     s99999999999999999999.111.7   null
+  j-negative     s-100.111.8                   null
+  k-empty-value  s                             null
+  l-garbage      sNOT-A-NUMBER.111.9           null
+  m-nodots       s1789146397                   481
+  n-floaty       s1.5e9.111.10                 1789146877
+
+$ bin/fm-bearings-snapshot.sh       (what the captain actually reads)
+  in_flight[14]{id,kind,state,repo,running,doing}:
+    a-real,ship,working,firstmate,8m,harness busy (claude-hook)
+    b-minutes,ship,working,firstmate,22m,harness busy (claude-hook)
+    c-hours,ship,working,firstmate,1h 22m,harness busy (claude-hook)
+    d-days,ship,working,firstmate,2d 3h,harness busy (claude-hook)
+    e-zeropadded,ship,working,firstmate,8m,harness busy (claude-hook)
+    f-no-token,ship,working,firstmate,unknown,harness busy (claude-hook)
+    g-legacy,ship,working,firstmate,unknown,harness busy (claude-hook)
+    h-future,ship,working,firstmate,unknown,harness busy (claude-hook)
+    i-overflow,ship,working,firstmate,unknown,harness busy (claude-hook)
+    j-negative,ship,working,firstmate,unknown,harness busy (claude-hook)
+    k-empty-value,ship,working,firstmate,unknown,harness busy (claude-hook)
+    l-garbage,ship,working,firstmate,unknown,harness busy (claude-hook)
+    m-nodots,ship,working,firstmate,8m,harness busy (claude-hook)
+    n-floaty,ship,working,firstmate,20707d 17h,harness busy (claude-hook)
+
+  a-real/b/c/d      real elapsed, rendered in the 's' / 'm' / 'h m' / 'd h' shapes
+  e-zeropadded      a leading zero is read base 10, never as an octal literal
+  f-no-token        no spawn_gen line at all              -> unknown
+  g-legacy          the teardown 'legacy-<stamp>-<pid>'   -> unknown
+  h-future          a start later than the observation    -> unknown, never negative
+  i-overflow        20 digits, past signed 64-bit         -> unknown, no arithmetic error
+  j-negative        a negative epoch                      -> unknown
+  k/l               's' alone, and non-numeric digits     -> unknown
+  Every one of the 14 rows is still rendered; no token shape costs the snapshot.
+
+--- the same fixture with the flag removed ---------------------------------
+  in_flight[14]{id,kind,state,repo,doing}:
+    a-real,ship,working,firstmate,harness busy (claude-hook)
+    b-minutes,ship,working,firstmate,harness busy (claude-hook)
+    c-hours,ship,working,firstmate,harness busy (claude-hook)
+    d-days,ship,working,firstmate,harness busy (claude-hook)
+    e-zeropadded,ship,working,firstmate,harness busy (claude-hook)
+    f-no-token,ship,working,firstmate,harness busy (claude-hook)
+    g-legacy,ship,working,firstmate,harness busy (claude-hook)
+    h-future,ship,working,firstmate,harness busy (claude-hook)
+    i-overflow,ship,working,firstmate,harness busy (claude-hook)
+    j-negative,ship,working,firstmate,harness busy (claude-hook)
+    k-empty-value,ship,working,firstmate,harness busy (claude-hook)
+    l-garbage,ship,working,firstmate,harness busy (claude-hook)
+    m-nodots,ship,working,firstmate,harness busy (claude-hook)
+    n-floaty,ship,working,firstmate,harness busy (claude-hook)
+
+$ bin/fm-fleet-snapshot.sh --json | jq '[.tasks[]|select(has("runtime"))]|length'
+  0   (no task row carries a runtime key at all)
