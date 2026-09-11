@@ -797,6 +797,123 @@ test_pause_verb_override_renders_all_brief_scaffolds() {
   pass "fm-brief.sh: custom pause verb renders in every scaffold"
 }
 
+# Firstmate's captain-facing estimate is arithmetic over two numbers only the
+# worker can measure, so both crewmate scaffolds must demand them on the status
+# line that already exists. A secondmate charter is a standing domain rather than
+# a task with a slow step, and must not carry the block.
+test_briefs_require_the_worker_stopwatch() {
+  local home ship scout charter brief example log parsed
+  home="$TMP_ROOT/stopwatch-home"
+  mkdir -p "$home/data"
+
+  FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-clock-s1 some-proj --mode no-mistakes >/dev/null 2>&1 \
+    || fail "fm-brief.sh ship scaffold exited non-zero"
+  ship="$home/data/brief-clock-s1/brief.md"
+  FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-clock-s2 some-proj --scout >/dev/null 2>&1 \
+    || fail "fm-brief.sh scout scaffold exited non-zero"
+  scout="$home/data/brief-clock-s2/brief.md"
+
+  for brief in "$ship" "$scout"; do
+    assert_present "$brief" "brief was not scaffolded"
+    assert_grep "carries your own stopwatch" "$brief" \
+      "$brief: brief did not require the worker to report its own clock"
+    assert_grep "the wall-clock seconds it really took" "$brief" \
+      "$brief: brief did not require a measured cost for the slowest finished step"
+    assert_grep "how many more runs of that step you still expect" "$brief" \
+      "$brief: brief did not require a remaining count firstmate can multiply"
+    assert_grep "Time the step rather than estimating it" "$brief" \
+      "$brief: brief did not forbid an estimated figure in place of a measured one"
+    assert_grep '"no long step yet" instead of inventing a number' "$brief" \
+      "$brief: brief did not give a worker with no long step an honest answer"
+    assert_grep "Firstmate cannot see your clock" "$brief" \
+      "$brief: brief did not state why the measurement is wanted"
+    assert_grep "Write both into the sentence" "$brief" \
+      "$brief: brief no longer prefers a sentence a careless worker can write over a form"
+    assert_grep 'took 512s, 2 more runs expected' "$brief" \
+      "$brief: brief example no longer shows a measured cost beside a remaining count"
+    grep -q '^   States: working, needs-decision, blocked, .*, done, failed\.$' "$brief" \
+      || fail "$brief: the stopwatch requirement changed the status states list"
+
+    # The two numbers ride the note of a status line that already exists, so the
+    # line the scaffold teaches must still fold as an ordinary working event:
+    # the verb parses, and nothing in the measurement opens a decision. Driven
+    # through the real shared classifier in a subshell, so its globals stay out
+    # of the rest of this file.
+    # shellcheck disable=SC2016 # Literal sed script: the backticks and \1 must not expand.
+    example=$(sed -n 's/^ *`\(working: fault reproduced.*\)`\.$/\1/p' "$brief")
+    [ -n "$example" ] || fail "$brief: could not find the taught status line to parse"
+    log="$home/${brief##*/}.taught.status"
+    printf '%s\n' "$example" > "$log"
+    parsed=$(
+      # shellcheck source=bin/fm-classify-lib.sh
+      . "$ROOT/bin/fm-classify-lib.sh"
+      printf '%s|%s' "$(status_line_verb "$example")" "$(status_open_decisions "$log")"
+    )
+    [ "$parsed" = "working|" ] \
+      || fail "$brief: the taught status line no longer folds as a plain working event (got '$parsed')"
+  done
+
+  FM_SECONDMATE_CHARTER='Supervise the alpha domain.' FM_HOME="$home" \
+    "$ROOT/bin/fm-brief.sh" brief-clock-s3 --secondmate alpha >/dev/null 2>&1 \
+    || fail "fm-brief.sh secondmate scaffold exited non-zero"
+  charter="$home/data/brief-clock-s3/brief.md"
+  assert_present "$charter" "secondmate charter was not scaffolded"
+  assert_no_grep "carries your own stopwatch" "$charter" \
+    "a standing secondmate domain must not be asked for a task-step stopwatch"
+  pass "fm-brief.sh: crewmate briefs require a measured cost and a remaining count"
+}
+
+# The Codex Desktop backend hands a worker its status instruction inline,
+# because a Desktop-owned thread never receives a generated brief and so cannot
+# be sent a pointer to one. That makes the status block in
+# .agents/skills/firstmate-codexapp/SKILL.md a hand-written copy of the
+# stopwatch requirement bin/fm-brief.sh owns, and nothing but this test keeps
+# the two in step: editing the scaffold's wording would otherwise leave the
+# Codex Desktop copy quietly teaching something else. Each surface is worded for
+# its own reader, so every claim is checked as the fragment it takes in each
+# place rather than as one whole-text match, while the worked example - the one
+# line a careless worker actually copies - must read identically in both.
+write_codexapp_stopwatch_map() {
+  cat > "$1" <<'MAP'
+While the work is still under way|while the work is still under way carries your own stopwatch
+the slowest step you already finished|name the slowest step you have already finished
+with the wall-clock seconds it really took|the wall-clock seconds it really took
+how many more runs of that step you expect|how many more runs of that step you still expect
+working: fault reproduced, the full test run took 512s, 2 more runs expected|working: fault reproduced, the full test run took 512s, 2 more runs expected
+Time that step rather than estimating it|Time the step rather than estimating it
+write "no long step yet" when nothing long has run|"no long step yet" instead of inventing a number
+MAP
+}
+
+test_codexapp_status_block_tracks_the_brief_stopwatch() {
+  local home ship skill map codex_line brief_line
+  home="$TMP_ROOT/codexapp-stopwatch-home"
+  mkdir -p "$home/data"
+  skill="$ROOT/.agents/skills/firstmate-codexapp/SKILL.md"
+  map="$TMP_ROOT/codexapp-stopwatch-map.txt"
+  write_codexapp_stopwatch_map "$map"
+
+  # One shared STOPWATCH_CONTRACT renders into both crewmate scaffolds, and
+  # test_briefs_require_the_worker_stopwatch already proves the scout carries
+  # it, so the ship brief is the whole of what the Codex copy has to track.
+  FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-codex-s1 some-proj --mode no-mistakes >/dev/null 2>&1 \
+    || fail "fm-brief.sh ship scaffold exited non-zero"
+  ship="$home/data/brief-codex-s1/brief.md"
+  assert_present "$ship" "brief was not scaffolded"
+
+  while IFS='|' read -r codex_line brief_line; do
+    [ -n "$codex_line" ] || continue
+    assert_grep "$brief_line" "$ship" \
+      "drift: the Codex Desktop status block says \"$codex_line\", but the brief bin/fm-brief.sh generates (STOPWATCH_CONTRACT) no longer says \"$brief_line\" - update both together"
+    assert_grep "$codex_line" "$skill" \
+      "drift: the brief bin/fm-brief.sh generates says \"$brief_line\", but .agents/skills/firstmate-codexapp/SKILL.md no longer says \"$codex_line\" - a Codex Desktop thread receives no brief, so that block is the only place this requirement reaches it"
+  done < "$map"
+
+  assert_grep "owns that stopwatch requirement for every generated brief" "$skill" \
+    "the Codex Desktop status block no longer names bin/fm-brief.sh as the owner of the requirement it copies"
+  pass "fm-brief.sh: the Codex Desktop status block tracks the scaffold's stopwatch requirement"
+}
+
 test_scout_and_secondmate_load_decision_hold_policy() {
   local home scout charter
   home="$TMP_ROOT/decision-policy-home"
@@ -858,5 +975,7 @@ test_secondmate_no_projects_charter
 test_secondmate_marked_request_reporting_contract
 test_secondmate_directory_paths_are_absolute_and_output_is_stable
 test_pause_verb_override_renders_all_brief_scaffolds
+test_briefs_require_the_worker_stopwatch
+test_codexapp_status_block_tracks_the_brief_stopwatch
 test_scout_and_secondmate_load_decision_hold_policy
 test_scout_and_secondmate_scaffold
