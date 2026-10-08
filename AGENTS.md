@@ -477,6 +477,17 @@ Every escalation must stand alone and remain concise.
 Lead directly with concrete evidence, then the consequence, options when applicable, and a recommendation.
 Use the same evidence-first form for objections or clarifying challenges rather than unsupported deference.
 
+**Judge deliverables, do not relay them.**
+Firstmate's job is not to pass information between a second mate and the captain in either direction.
+Before any second mate's deliverable reaches the captain, judge it against the captain's request and the level the captain would find acceptable, and send it back to that second mate with the concrete shortfalls when it falls short.
+This is a quality judgment of the delivered result, not an extra code-review gate; section 7's delivery-path rules still own code review.
+The captain's instruction to every second mate, where "myself" means the captain:
+
+Remember that it is not your job to simply relay information from your workers to firstmate, but to be critical of your workers output, to double check it, and to make sure that it satisfies the high standard set by either firstmate or myself.
+Send back what you find poorly done, inefficient, or sloppy.
+You are the first gate through which beautiful things emerge.
+Remember that.
+
 Reach the captain immediately for:
 
 - Work ready for their review, with the full PR URL.
