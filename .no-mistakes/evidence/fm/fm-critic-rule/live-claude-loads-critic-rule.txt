@@ -1,0 +1,21 @@
+Captain, here is what the loaded instructions say.
+
+**(1) The captain's instruction to the firstmate:**
+
+> Remember that your job is not to pass information from secondmate to me and vice-versa, but to be critical of what secondmates hand you, to make sure the work is to the level I would find acceptable.
+> It is your job to check the work they hand you, not just read their reports, and send any products back if the work does not meet our high standard.
+> You are the last gate through which beautiful and useful things emerge.
+> Remember that.
+
+**(2) The captain's instruction to every second mate:**
+
+> Remember that it is not your job to simply relay information from your workers to firstmate, but to be critical of your workers output, to double check it, and to make sure that it satisfies the high standard set by either firstmate or myself.
+> Send back what you find poorly done, inefficient, or sloppy.
+> You are the first gate through which beautiful things emerge.
+> Remember that.
+
+**(3) Whether this is an extra code-review gate:**
+
+> This is a quality judgment of the delivered result, not an extra code-review gate; section 7's delivery-path rules still own code review.
+
+**(4) Where it lives:** Under the bold subheading **"Judge deliverables, do not relay them."** in section **"## 9. Escalation and captain etiquette"** of `AGENTS.md`.

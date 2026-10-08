@@ -1,0 +1,6 @@
+Captain, here are the answers, all from the loaded instructions:
+
+(a) No, I don't forward it as-is. Section 9 says to judge what a second mate delivers rather than relay it, and never to pass a worker's report through word for word.
+(b) No, I don't add my own code review. Section 7 says that when no-mistakes is the chosen path, it alone owns the code review, so I must not hold the work for a manual review. Section 9 says judging the result is not an extra code-review step.
+(c) Instead, I open the mock-up myself and judge it against what you asked for and your standard, and I send it back to the second mate if it falls short (section 9).
+If it holds up, I bring it to you in plain language with the PR's full https:// link, a short summary of the outcome and the no-mistakes risk level (sections 7 and 9), and I merge only on your explicit word (section 1, hard rule 2).
