@@ -236,7 +236,7 @@ def main():
         print(json.dumps(report, indent=2))
     else:
         s = report["summary"]
-        print(f"{report['name']} — {report['checked_at']}")
+        print(f"{report['name']} - {report['checked_at']}")
         if s["mem_used_pct"] is None:
             print("  • RAM: unavailable")
         else:

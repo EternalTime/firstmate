@@ -124,7 +124,7 @@ Firstmate PR #3644 demonstrated the cost: pinning a 75-162-script walk took 32.7
 - Never wrap multiple sentences onto one physical line.
   Those two are this repo's own unconditional bar for every tracked Markdown file, deliberately stricter than the fleet-wide guideline in `AGENTS.md`'s "General Guidelines for all crewmates, including firstmate" section, which is scoped to long Markdown and TeX files.
 - Never add an agent name as a commit co-author: no agent name, by any means, not only an auto-added one and not only your own.
-- Plain dash `-`, never an em dash, is owned fleet-wide by that same `AGENTS.md` section.
+- Plain dash `-`, never an em dash, is owned fleet-wide by that same `AGENTS.md` section, and `bin/fm-lint.sh` enforces it.
 - `bin/*.sh` and `bin/backends/*.sh` must pass `shellcheck`.
 - Run Firstmate production-library tests and commands that source `bin/` scripts under `bash` explicitly, never through the tool shell's default interpreter.
 - Run `bin/fm-lint.sh` before treating a script change as done; it is the single owner of the lint definition that CI and the no-mistakes pre-push gate both invoke, its own header owns what that definition covers, and it refuses to run under any other version of either linter.

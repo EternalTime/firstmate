@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# fm-tmux-lib.sh — shared tmux pane primitives for firstmate.
+# fm-tmux-lib.sh - shared tmux pane primitives for firstmate.
 #
 # ONE tmux source for delivery-busy detection, composer capture primitives,
 # and verified submit.
@@ -235,7 +235,7 @@ fm_pane_is_busy() {  # <target> [harness]
 }
 
 # fm_tmux_submit_core: type <text> into <target> ONCE, then submit with Enter,
-# verifying the composer cleared. Retries Enter ONLY — never retypes, because a
+# verifying the composer cleared. Retries Enter ONLY - never retypes, because a
 # swallowed Enter leaves our text in the composer and retyping would duplicate
 # it. Echoes the final proof-carrying verdict on stdout so callers can require
 # exact `empty` before treating submission as confirmed.

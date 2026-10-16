@@ -330,12 +330,12 @@ test_outcome_text_is_bounded_without_corrupting_characters() {
   "$EMIT" --home "$home" --obligation pf-text --relation rel-code \
     --source-home main --work-id work-text --generation 1 --outcome pr-merged \
     --deliverable pr_url=https://github.com/example/repo/pull/3 \
-    --outcome-text "$(printf 'Shipped\tthe caf\xc3\xa9 fix \xe2\x80\x94 \xf0\x9f\x9a\xa2\nsecond line')" >/dev/null \
+    --outcome-text "$(printf 'Shipped\tthe caf\xc3\xa9 fix \xe2\x86\x92 \xf0\x9f\x9a\xa2\nsecond line')" >/dev/null \
     || fail "emit failed for non-ASCII outcome text"
   event=$(find "$home/state/public-followup/events" -name '*.json' | head -1)
   text=$(jq -r '.public_safe_outcome' "$event") \
     || fail "the typed event must remain valid JSON with non-ASCII text"
-  [ "$text" = 'Shipped the café fix — 🚢 second line' ] \
+  [ "$text" = 'Shipped the café fix → 🚢 second line' ] \
     || fail "non-ASCII outcome text was corrupted or not collapsed: '$text'"
 
   # A very long sentence is capped by codepoint, so the JSON stays valid.

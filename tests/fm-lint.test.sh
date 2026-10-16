@@ -271,6 +271,10 @@ case "$*" in
     fi
     exit 0
     ;;
+  "ls-files -z")
+    find . -path ./.git -prune -o -type f -print0
+    exit 0
+    ;;
   *)
     exit 1
     ;;
@@ -1220,6 +1224,82 @@ test_rejects_direct_beads_cli_in_explicit_core_path() {
   pass "fm-lint.sh enforces backend purity for explicit core paths"
 }
 
+# fm_lint_em_dash_repo <tmp>: a non-git lint copy whose ShellCheck roots are
+# clean, so only the em dash check can fail it. Prints the lint copy path.
+fm_lint_em_dash_repo() {
+  local tmp=$1 lint_copy
+  mkdir -p "$tmp/repo/bin/backends" "$tmp/repo/tests"
+  lint_copy="$tmp/repo/bin/fm-lint.sh"
+  cp "$LINT" "$lint_copy"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$tmp/repo/bin/fm-lint-workflows.sh"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$tmp/repo/bin/backends/noop.sh"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$tmp/repo/tests/noop.test.sh"
+  chmod +x "$lint_copy" "$tmp/repo/bin/fm-lint-workflows.sh"
+  printf '%s\n' "$lint_copy"
+}
+
+test_rejects_em_dashes_outside_verbatim_evidence() {
+  local tmp fakebin log lint_copy dash exempt out rc
+  tmp=$(fm_test_tmproot fm-lint-em-dash)
+  fakebin=$(fm_fakebin "$tmp")
+  log="$tmp/shellcheck.log"
+  fm_lint_stub_shellcheck "$fakebin" "$log"
+  lint_copy=$(fm_lint_em_dash_repo "$tmp")
+  dash=$(printf '\xe2\x80\x94')
+  mkdir -p "$tmp/repo/docs/verification" "$tmp/repo/tests/fixtures"
+  printf '# Notes\nA clause %s and another.\n' "$dash" > "$tmp/repo/docs/note.md"
+  printf '#!/usr/bin/env bash\n# helper %s comment\nexit 0\n' "$dash" > "$tmp/repo/bin/helper.sh"
+  printf 'captured %s output\n' "$dash" > "$tmp/repo/tests/fixtures/capture.ansi"
+  printf 'authenticated %s token valid\n' "$dash" > "$tmp/repo/docs/verification/tool.md"
+  printf 'Never use the em dash "%s".\n' "$dash" > "$tmp/repo/AGENTS.md"
+  printf 'bin\0ary %s\n' "$dash" > "$tmp/repo/blob.bin"
+
+  rc=0
+  out=$(cd "$tmp/repo" && CI=true PATH="$fakebin:$PATH" "$lint_copy" 2>&1) || rc=$?
+  [ "$rc" -ne 0 ] || fail "lint accepted em dashes in ordinary files"$'\n'"$out"
+  assert_contains "$out" 'docs/note.md:2: em dash; use a plain dash "-"' \
+    "lint did not name the Markdown em dash by file and line"
+  assert_contains "$out" 'bin/helper.sh:2: em dash; use a plain dash "-"' \
+    "lint did not name the shell comment em dash by file and line"
+  for exempt in tests/fixtures/capture.ansi docs/verification/tool.md AGENTS.md blob.bin; do
+    assert_not_contains "$out" "$exempt:" "lint flagged an exempt em dash in $exempt"
+  done
+
+  rm "$tmp/repo/docs/note.md" "$tmp/repo/bin/helper.sh"
+  rc=0
+  out=$(cd "$tmp/repo" && CI=true PATH="$fakebin:$PATH" "$lint_copy" 2>&1) || rc=$?
+  [ "$rc" -eq 0 ] || fail "lint failed on exempt em dashes only (exit $rc)"$'\n'"$out"
+  pass "fm-lint.sh rejects em dashes everywhere except verbatim evidence and quoted mentions"
+}
+
+test_em_dash_check_scans_tracked_files_and_explicit_paths() {
+  local tmp fakebin log lint_copy dash exempt out rc
+  tmp=$(fm_test_tmproot fm-lint-em-dash-git)
+  fakebin=$(fm_fakebin "$tmp")
+  log="$tmp/shellcheck.log"
+  fm_lint_stub_shellcheck "$fakebin" "$log"
+  lint_copy=$(fm_lint_em_dash_repo "$tmp")
+  dash=$(printf '\xe2\x80\x94')
+  printf 'tracked %s line\n' "$dash" > "$tmp/repo/tracked.md"
+  printf 'untracked %s line\n' "$dash" > "$tmp/repo/untracked.md"
+  git -C "$tmp/repo" init -q
+  git -C "$tmp/repo" add bin tests tracked.md
+
+  rc=0
+  out=$(cd "$tmp/repo" && CI=true PATH="$fakebin:$PATH" "$lint_copy" 2>&1) || rc=$?
+  [ "$rc" -ne 0 ] || fail "lint accepted an em dash in a tracked file"$'\n'"$out"
+  assert_contains "$out" "tracked.md:1: em dash" "lint did not name the tracked em dash"
+  assert_not_contains "$out" "untracked.md" "lint scanned a file git does not track"
+
+  printf '#!/usr/bin/env bash\n# explicit %s comment\nexit 0\n' "$dash" > "$tmp/repo/bin/explicit.sh"
+  rc=0
+  out=$(cd "$tmp/repo" && PATH="$fakebin:$PATH" "$lint_copy" bin/explicit.sh 2>&1) || rc=$?
+  [ "$rc" -ne 0 ] || fail "lint accepted an em dash in an explicit path"$'\n'"$out"
+  assert_contains "$out" "bin/explicit.sh:2: em dash" "lint did not name the explicit path's em dash"
+  assert_not_contains "$out" "tracked.md" "explicit-path lint scanned files beyond the given paths"
+  pass "fm-lint.sh scans git-tracked files by default and only explicit paths when given"
+}
+
 test_ignores_ambient_shellcheck_opts() {
   if ! pinned_ready; then
     pass "SKIP (ShellCheck $REQUIRED not resolved): ambient options regression check"
@@ -2045,6 +2125,8 @@ test_rejects_wrong_shellcheck_version
 test_catches_a_real_lint_defect
 test_rejects_direct_beads_cli_invocations
 test_rejects_direct_beads_cli_in_explicit_core_path
+test_rejects_em_dashes_outside_verbatim_evidence
+test_em_dash_check_scans_tracked_files_and_explicit_paths
 test_ignores_ambient_shellcheck_opts
 test_clean_fixture_passes
 test_jobs_are_deterministic_and_complete
