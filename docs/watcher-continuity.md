@@ -480,6 +480,7 @@ They also prove that a legacy or handoff-phase watcher marker from an absent rep
 - The test reaper that stops a watcher armed for a temporary home.
 - Both halves of the worth-sending test: each presentation source alone still resurfaces after a real down stretch, and a fully torn-down fleet re-arms silently across consecutive cycles, retiring each empty episode, instead of delivering recovery wakes whose drains present nothing.
 - The same two halves for the reclaim path, where the watcher takes over a dead predecessor's lock itself and recovers the episode its own steal published: that reclaim stays live and silent over an empty fleet, retiring the empty episode, and still resurfaces a real open decision.
+- A recovery over task events the drain's outcome backstop skips, a reserved-key decision and an outcome a branch outcome already covers, that stays silent and is confirmed by a drain that prints nothing.
 
 Staying silent on a generation a concurrent drain has already moved to handling or acked is deliberately left unpinned by any test, because reaching that token deterministically would need a watcher-side test seam, and maintaining a production seam was judged not worth it for a state no fixture can currently reach.
 
