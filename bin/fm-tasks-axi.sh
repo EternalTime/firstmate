@@ -45,6 +45,10 @@
 #     the task record, status file, and inbox that go with the row - which such
 #     a row would lack, counting as live work nobody is doing that nothing
 #     later would notice (`start <id>` stays a documented direct transition);
+#   - `done` (or its `close` alias) while the task record `<state>/<id>.meta`
+#     (state is FM_STATE_OVERRIDE, else $FM_HOME/state) still exists, because
+#     only bin/fm-teardown.sh's landed-work check closes dispatched work, and
+#     an open PR has not landed;
 #   - a data directory that cannot be resolved, or whose backend configuration
 #     cannot be read (bin/fm-tasks-axi-lib.sh owns that diagnostic);
 #   - a markdown `<data>/backlog.md` that is itself a symlink, because the
