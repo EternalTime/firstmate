@@ -239,7 +239,8 @@ Retiring the episode is a separate best-effort step on top of that silence, and 
 That covers a downtime generation the choosing arm check has already marked announced as well as a pending one, since an announced generation no wake carried would otherwise read as a recovery still owed.
 A watcher close publishes downtime, so without that test a torn-down fleet re-arms into an episode whose one announcement delivers a recovery wake that finds nothing.
 The watcher reads those sources read-only and never advances the presentation cursor.
-Its backstop check skips the drain's branch-outcome coverage index, so it can only over-report, and any failure to read a source is treated as work present, because a redundant wake costs a turn while a suppressed one costs the work.
+Its backstop check is the drain's own per-task decision (`status_outcome_backstop_event` in `bin/fm-classify-lib.sh`), so an event the drain skips, such as a keyed decision or one a branch outcome already covers, never produces a wake that presents nothing.
+Only a coverage-index rebuild the drain would run first is beyond the read-only check, and that case, like any failure to read a source, is treated as work present, because a redundant wake costs a turn while a suppressed one costs the work.
 
 ### Generation reuse
 
@@ -479,6 +480,7 @@ They also prove that a legacy or handoff-phase watcher marker from an absent rep
 - The test reaper that stops a watcher armed for a temporary home.
 - Both halves of the worth-sending test: each presentation source alone still resurfaces after a real down stretch, and a fully torn-down fleet re-arms silently across consecutive cycles, retiring each empty episode, instead of delivering recovery wakes whose drains present nothing.
 - The same two halves for the reclaim path, where the watcher takes over a dead predecessor's lock itself and recovers the episode its own steal published: that reclaim stays live and silent over an empty fleet, retiring the empty episode, and still resurfaces a real open decision.
+- A recovery over task events the drain's outcome backstop skips, a reserved-key decision and an outcome a branch outcome already covers, that stays silent and is confirmed by a drain that prints nothing.
 
 Staying silent on a generation a concurrent drain has already moved to handling or acked is deliberately left unpinned by any test, because reaching that token deterministically would need a watcher-side test seam, and maintaining a production seam was judged not worth it for a state no fixture can currently reach.
 

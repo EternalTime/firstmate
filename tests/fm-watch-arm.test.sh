@@ -1455,6 +1455,56 @@ test_empty_fleet_recovery_stays_silent_across_rearms() {
   pass "watch-arm: an empty fleet re-arms silently instead of resurfacing nothing"
 }
 
+# The reported symptom with workers still running: a recovery wake arrived and
+# the handling drain printed nothing, because the watcher counted a task's
+# latest captain-facing event that the drain's outcome backstop deliberately
+# skips. Each fixture holds exactly such an event; the watcher must agree with
+# the drain and stay silent, and the drain must confirm there was nothing.
+expect_recovery_matches_empty_drain() {  # <case> <label> <fixture-fn>
+  local name=$1 label=$2 fixture=$3 dir home state fakebin
+  dir=$(make_case "$name")
+  home="$dir/home"; state="$dir/state"; fakebin="$dir/fakebin"
+  mkdir -p "$home/data"
+  start_rearm_arm "$home" "$state" "$fakebin" "$dir/first-arm.out"
+  is_live_non_zombie "$ARM_PID" || fail "$label fixture watcher did not stay live"
+  close_live_watcher "$state"
+  "$fixture" "$state"
+  [ ! -s "$state/.wake-queue" ] || fail "$label fixture queued a wake, so it proves nothing"
+  start_rearm_arm "$home" "$state" "$fakebin" "$dir/recovery-arm.out"
+  expect_silent_arm "$label" "$dir/recovery-arm.out"
+  expect_retired_episode "$label" "$state"
+  close_live_watcher "$state"
+  FM_HOME="$home" FM_STATE_OVERRIDE="$state" "$DRAIN" > "$dir/drain.out" 2>/dev/null \
+    || fail "$label drain failed"
+  [ ! -s "$dir/drain.out" ] \
+    || fail "$label: the drain presents this event, so the fixture proves nothing: $(cat "$dir/drain.out")"
+}
+
+seed_reserved_key_decision() {  # <state>
+  printf 'needs-decision [key=pending-reply-x]: written outside that namespace vocabulary\n' \
+    > "$1/foreign.status"
+  prime_status_seen "$1" "$1/foreign.status"
+}
+
+seed_branch_covered_outcome() {  # <state>
+  local seq
+  printf 'working: started\ndone: PR https://example.test/77 checks green\n' > "$1/covered.status"
+  prime_status_seen "$1" "$1/covered.status"
+  seq=$(FM_STATE_OVERRIDE="$1" "$ROOT/bin/fm-branch-outcome.sh" append --task covered \
+    --verdict routine --summary 'covered finished' --wake 'signal: covered') \
+    || fail "branch outcome fixture could not be recorded"
+  FM_STATE_OVERRIDE="$1" "$ROOT/bin/fm-branch-outcome.sh" mark-read --through "$seq" >/dev/null \
+    || fail "branch outcome fixture could not be marked read"
+}
+
+test_recovery_skips_events_the_drain_skips() {
+  expect_recovery_matches_empty_drain recovery-skip-reserved-key \
+    "a keyed decision the fold rejects" seed_reserved_key_decision
+  expect_recovery_matches_empty_drain recovery-skip-branch-covered \
+    "a task outcome a branch outcome already covers" seed_branch_covered_outcome
+  pass "watch-arm: recovery stays silent over task events the drain's outcome backstop skips"
+}
+
 # Start the real watcher on top of a lock a dead predecessor left behind, so
 # fm-watch.sh reclaims that lock ITSELF rather than being handed one an arm
 # already cleared. The reclaim still arrives on a published episode:
@@ -1974,4 +2024,5 @@ test_take_over_preserves_downtime_from_watcher_self_exit
 test_opencode_arm_plugin_decides_with_the_shared_predicate
 test_recovery_still_surfaces_every_presentable_source
 test_empty_fleet_recovery_stays_silent_across_rearms
+test_recovery_skips_events_the_drain_skips
 test_reclaimed_stale_lock_obeys_the_presentable_test
