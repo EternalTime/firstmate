@@ -1,0 +1,11 @@
+worker.pid=58784 ready=58784
+corrupted worker.ready -> 999999
+  ready_owner_live (before heal): no
+  heartbeat rewrote worker.ready to 58784 after ~500ms; mode=600
+  ensure_worker: ok, same live worker kept (58784)
+corrupted worker.ready -> 56584
+  ready_owner_live (before heal): no
+  heartbeat rewrote worker.ready to 58784 after ~200ms; mode=600
+  ensure_worker: ok, same live worker kept (58784)
+matching ready keeps content=58784, mtime advanced 1792185324 -> 1792185327
+PASS

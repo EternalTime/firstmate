@@ -1,0 +1,5 @@
+worker.pid=70936 ready=70936
+corrupted worker.ready -> 999999
+/Users/owlshome/.no-mistakes/evidence/01M5377PAG142A7N87YDYRE9M4/s3-heartbeat-heal-driver.sh: line 18: fm_remote_job_ready_owner_live: command not found
+  ready_owner_live (before heal): no
+FAIL heartbeat never rewrote ready (content=999999)
