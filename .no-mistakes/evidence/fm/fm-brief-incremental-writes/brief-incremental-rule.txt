@@ -1,0 +1,82 @@
+===== ship-no-mistakes: Rules section (numbered rules 7-9 + following) =====
+2:1. Never push to the default branch. Never merge a PR.
+3:2. Keep project edits inside this worktree; keep proof and scratch output outside it, under `/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.tiCPYJ/data/ship-no-mistakes/` or a temporary directory.
+6:3. Use gh-axi for GitHub operations and chrome-devtools-axi for browser operations.
+7:4. Report status by appending one line:
+38:5. If you hit the same obstacle twice, append `blocked [at=<epoch>]: {why}` and stop; firstmate will help.
+39:6. If a decision belongs above the implementation worker (product choices, destructive actions),
+46:7. Never administer infrastructure that every lane shares. Two things are shared:
+68:8. Never let a window appear on the captain's screen unannounced: he cannot tell a window you
+79:9. Build your deliverable on disk in incremental passes, never in one oversized write.
+--- rule 9 text ---
+9. Build your deliverable on disk in incremental passes, never in one oversized write.
+   Create the deliverable file early, as soon as you know its shape, as a working skeleton:
+   its headings and outline, or the smallest version of the change that runs.
+   Save that skeleton at once - commit it when the deliverable lives in this worktree's git -
+   then grow it one section or one change at a time, saving or committing each finished pass
+   before you start the next.
+   A write that fails or is cut off loses everything it carried, while passes already on disk
+   survive, so never hold a large body of findings or code back for one final write.
+
+===== ship-direct-PR: Rules section (numbered rules 7-9 + following) =====
+2:1. Never push to the default branch (push only your `fm/ship-direct-PR` branch). Never merge a PR.
+3:2. Keep project edits inside this worktree; keep proof and scratch output outside it, under `/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.tiCPYJ/data/ship-direct-PR/` or a temporary directory.
+6:3. Use gh-axi for GitHub operations and chrome-devtools-axi for browser operations.
+7:4. Report status by appending one line:
+38:5. If you hit the same obstacle twice, append `blocked [at=<epoch>]: {why}` and stop; firstmate will help.
+39:6. If a decision belongs above the implementation worker (product choices, destructive actions),
+44:7. Never administer infrastructure that every lane shares. Two things are shared:
+66:8. Never let a window appear on the captain's screen unannounced: he cannot tell a window you
+77:9. Build your deliverable on disk in incremental passes, never in one oversized write.
+--- rule 9 text ---
+9. Build your deliverable on disk in incremental passes, never in one oversized write.
+   Create the deliverable file early, as soon as you know its shape, as a working skeleton:
+   its headings and outline, or the smallest version of the change that runs.
+   Save that skeleton at once - commit it when the deliverable lives in this worktree's git -
+   then grow it one section or one change at a time, saving or committing each finished pass
+   before you start the next.
+   A write that fails or is cut off loses everything it carried, while passes already on disk
+   survive, so never hold a large body of findings or code back for one final write.
+
+===== ship-local-only: Rules section (numbered rules 7-9 + following) =====
+2:1. Never push to any remote and never open a PR. Work only on your `fm/ship-local-only` branch; firstmate handles the merge into local `main`.
+3:2. Keep project edits inside this worktree; keep proof and scratch output outside it, under `/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.tiCPYJ/data/ship-local-only/` or a temporary directory.
+6:3. Use gh-axi for GitHub operations and chrome-devtools-axi for browser operations.
+7:4. Report status by appending one line:
+38:5. If you hit the same obstacle twice, append `blocked [at=<epoch>]: {why}` and stop; firstmate will help.
+39:6. If a decision belongs above the implementation worker (product choices, destructive actions),
+44:7. Never administer infrastructure that every lane shares. Two things are shared:
+66:8. Never let a window appear on the captain's screen unannounced: he cannot tell a window you
+77:9. Build your deliverable on disk in incremental passes, never in one oversized write.
+--- rule 9 text ---
+9. Build your deliverable on disk in incremental passes, never in one oversized write.
+   Create the deliverable file early, as soon as you know its shape, as a working skeleton:
+   its headings and outline, or the smallest version of the change that runs.
+   Save that skeleton at once - commit it when the deliverable lives in this worktree's git -
+   then grow it one section or one change at a time, saving or committing each finished pass
+   before you start the next.
+   A write that fails or is cut off loses everything it carried, while passes already on disk
+   survive, so never hold a large body of findings or code back for one final write.
+
+===== scout-sweep: Rules section (numbered rules 7-9 + following) =====
+2:1. Never push to any remote and never open a PR.
+3:2. Stay inside this worktree; the only files you may write outside it are the report and the status file below.
+4:3. Use gh-axi for GitHub operations and chrome-devtools-axi for browser operations.
+5:4. Report status by appending one line:
+33:5. If you hit the same obstacle twice, append `blocked [at=<epoch>]: {why}` and stop; firstmate will help.
+34:6. If a decision belongs to a human (product choices, destructive actions),
+38:7. Never administer infrastructure that every lane shares. Two things are shared:
+60:8. Never let a window appear on the captain's screen unannounced: he cannot tell a window you
+71:9. Build your deliverable on disk in incremental passes, never in one oversized write.
+--- rule 9 text ---
+9. Build your deliverable on disk in incremental passes, never in one oversized write.
+   Create the deliverable file early, as soon as you know its shape, as a working skeleton:
+   its headings and outline, or the smallest version of the change that runs.
+   Save that skeleton at once - commit it when the deliverable lives in this worktree's git -
+   then grow it one section or one change at a time, saving or committing each finished pass
+   before you start the next.
+   A write that fails or is cut off loses everything it carried, while passes already on disk
+   survive, so never hold a large body of findings or code back for one final write.
+
+===== mate-alpha: occurrences of incremental rule =====
+0

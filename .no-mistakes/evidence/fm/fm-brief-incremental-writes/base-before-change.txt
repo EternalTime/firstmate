@@ -1,0 +1,1 @@
+base (6b14dd1) scout brief: 'oversized write' count = 0; last numbered rule: 8. Never let a window appear on the captain's screen unannou
