@@ -1803,8 +1803,12 @@ test_crewmate_scaffolds_announce_visible_surfaces() {
     assert_grep 'needs-decision [at=<epoch>] [key=screen-<slug>]: about to open {what}' "$brief" \
       "$mode ship brief did not require a keyed announcement before the surface opens"
     # shellcheck disable=SC2016 # Literal backticks and braces must remain unexpanded.
-    assert_grep 'needs-decision [at=<epoch>] [key=screen-<slug>-free]:' "$brief" \
+    assert_grep "note [at=<epoch>]: {what} closed, or left open and the captain's to use" "$brief" \
       "$mode ship brief did not require announcing the surface's release"
+    assert_grep "and carry on without waiting." "$brief" \
+      "$mode ship brief made the surface's release block the worker"
+    assert_no_grep "key=screen-<slug>-free" "$brief" \
+      "$mode ship brief still holds the worker on a keyed release decision"
     assert_grep "Headless runs" "$brief" \
       "$mode ship brief did not exempt headless runs"
   done
@@ -1817,8 +1821,8 @@ test_crewmate_scaffolds_announce_visible_surfaces() {
     . "$ROOT/bin/fm-classify-lib.sh"
     status_is_captain_relevant 'needs-decision [at=1700000000] [key=screen-app-window]: about to open the app window on the captain'"'"'s screen for a smoke test; hands off until released' \
       || fail "the screen announcement shape is not captain-relevant"
-    status_is_captain_relevant 'needs-decision [at=1700000000] [key=screen-app-window-free]: the app window left open and the captain'"'"'s to use' \
-      || fail "the screen release shape is not captain-relevant"
+    ! status_prefix_unrecognized 'note [at=1700000000]: the app window left open and the captain'"'"'s to use' \
+      || fail "the screen release shape is not a recognized status line"
   ) || exit 1
 
   FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-screen-scout alpha --scout >/dev/null 2>&1 \

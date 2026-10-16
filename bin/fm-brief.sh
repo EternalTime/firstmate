@@ -731,7 +731,9 @@ SHARED_INFRA_RULE=${SHARED_INFRA_RULE%$'\n'}
 # mid-run. The opening announcement is a keyed needs-decision so it both wakes
 # firstmate (it is captain-relevant) and holds the worker until firstmate has
 # warned him; a plain working: line would be absorbed and the window would
-# appear unannounced. Headless runs show nothing on screen and are exempt.
+# appear unannounced. The release is a plain note: line the worker writes and
+# carries on past: a freed surface needs no answer, so it must not park the
+# worker. Headless runs show nothing on screen and are exempt.
 # The secondmate charter omits it: a secondmate dispatches workers rather than
 # opening surfaces itself, and its workers receive this rule in their briefs.
 IFS= read -r -d '' SCREEN_RULE <<'EOF' || true
@@ -744,8 +746,8 @@ IFS= read -r -d '' SCREEN_RULE <<'EOF' || true
    screen need no announcement. When you are finished with the surface, release it: if your
    task is ending, name it in your `done:` line as closed or as left open and his to use;
    otherwise append
-   `needs-decision [at=<epoch>] [key=screen-<slug>-free]: {what} closed, or left open and the captain's to use`
-   and stop until firstmate answers.
+   `note [at=<epoch>]: {what} closed, or left open and the captain's to use`
+   and carry on without waiting.
 EOF
 SCREEN_RULE=${SCREEN_RULE%$'\n'}
 
