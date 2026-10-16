@@ -273,6 +273,35 @@ test_colon_first_key_position_is_answerable() {
   pass "fm-send --resolve-key: a colon-first stated key is open under that key and answerable"
 }
 
+# The same failure with the key written at the END of the line
+# (needs-decision: <summary> [key=X]): the drain showed the tag and advertised
+# --resolve-key X, while the fold had filed the decision under "default", so
+# the advertised command refused. The drain must list it under X, with the tag
+# stripped from the note, and answering X must close it.
+test_trailing_key_position_is_answerable() {
+  local dir fb log home rc out
+  dir="$TMP_ROOT/trailing"; mkdir -p "$dir"
+  fb=$(make_stubs "$dir"); log="$dir/send.log"
+  home=$(setup_home trailing)
+  fm_write_meta "$home/state/t8.meta" "window=sess:fm-t8" "kind=ship"
+  printf 'needs-decision [at=1788576000]: pick a colour for the panel [key=review-asks]\n' > "$home/state/t8.status"
+
+  out=$(drain_out "$home")
+  printf '%s\n' "$out" | grep -qxF 't8 [key=review-asks] needs-decision: pick a colour for the panel' \
+    || fail "precondition: the trailing-key decision should list as open under its stated key: $out"
+
+  run_send "$fb" "$home" "$log" t8 --resolve-key review-asks "use teal"; rc=$?
+  expect_code 0 "$rc" "answering a trailing stated key should succeed, not refuse as unknown"
+  sed -E 's/ \[at=[0-9]+\]//' "$home/state/t8.status" | grep -qF 'resolved [key=review-asks]: answered: use teal' \
+    || fail "the closing resolved line is missing:"$'\n'"$(cat "$home/state/t8.status")"
+
+  out=$(drain_out "$home")
+  if printf '%s' "$out" | grep -F 'OPEN DECISIONS' >/dev/null; then
+    fail "the answered trailing-key decision still lists as open: $out"
+  fi
+  pass "fm-send --resolve-key: a trailing stated key is open under that key and answerable"
+}
+
 test_answer_starts_work_never_orphans() {
   local dir fb log home rc out
   dir="$TMP_ROOT/starts-work"; mkdir -p "$dir"
@@ -909,6 +938,7 @@ test_answer_send_closes_open_decision
 test_answer_close_is_self_announced
 test_separate_resolve_key_answers_do_not_rewake
 test_colon_first_key_position_is_answerable
+test_trailing_key_position_is_answerable
 test_answer_starts_work_never_orphans
 test_routine_steer_never_closes
 test_not_open_key_refuses_before_send

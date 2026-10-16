@@ -69,6 +69,38 @@ test_stated_key_is_honored_in_both_positions() {
   pass "a stated [key=X] opens X whether it precedes or follows the verb colon"
 }
 
+test_stated_key_is_honored_at_the_end_of_the_line() {
+  local dir expected
+  dir=$(case_dir trailing)
+  expected=$(printf 'review-asks\tneeds-decision\tpick a colour for the panel\n')
+  printf 'needs-decision: pick a colour for the panel [key=review-asks]\n' > "$dir/a.status"
+  assert_fold "$dir/a.status" "$expected" "trailing form"
+  printf 'needs-decision [at=1788576000]: pick a colour for the panel [key=review-asks]  \n' > "$dir/b.status"
+  assert_fold "$dir/b.status" "$expected" "stamped trailing form with trailing spaces"
+  printf 'blocked: waiting on the deploy token [key=creds]\n' > "$dir/c.status"
+  assert_fold "$dir/c.status" "$(printf 'creds\tblocked\twaiting on the deploy token\n')" \
+    "trailing blocked form"
+
+  # Earlier positions win, and the losing token stays note text.
+  printf 'needs-decision [key=a]: question [key=b]\n' > "$dir/d.status"
+  assert_fold "$dir/d.status" "$(printf 'a\tneeds-decision\tquestion [key=b]\n')" \
+    "before-colon token beats a trailing one"
+  printf 'needs-decision: [key=a] question [key=b]\n' > "$dir/e.status"
+  assert_fold "$dir/e.status" "$(printf 'a\tneeds-decision\tquestion [key=b]\n')" \
+    "note-head token beats a trailing one"
+
+  # Closes cross positions in both directions.
+  printf 'needs-decision: pick the bound [key=seam]\nresolved [key=seam]: answered: use 4\n' > "$dir/f.status"
+  assert_fold "$dir/f.status" "" "documented resolution closing a trailing open"
+  printf 'needs-decision [key=seam]: pick the bound\nresolved: cleared on its own [key=seam]\n' > "$dir/g.status"
+  assert_fold "$dir/g.status" "" "trailing resolution closing a documented open"
+
+  # A malformed trailing slug is rejected like any stated key, never "default".
+  printf 'needs-decision: pick one [key=bad slug]\n' > "$dir/h.status"
+  assert_fold "$dir/h.status" "" "malformed trailing slug"
+  pass "a stated [key=X] that ends the line opens and closes X"
+}
+
 test_bare_keyless_line_still_folds_to_default() {
   local dir
   dir=$(case_dir keyless)
@@ -265,6 +297,7 @@ test_incremental_agrees_with_full_fold_across_appends() {
 }
 
 test_stated_key_is_honored_in_both_positions
+test_stated_key_is_honored_at_the_end_of_the_line
 test_bare_keyless_line_still_folds_to_default
 test_resolution_closes_across_positions
 test_blocked_is_position_tolerant_like_needs_decision
