@@ -1372,6 +1372,9 @@ test_claude_stop_hook_runs_the_host_without_the_file_and_off_opts_out() {
   assert_re '	handled	turn=[^	]*	posture=attended	' "$home/state/.supervision-host.log" "the ledger must record the attended turn"
   [ ! -s "$home/hook.rc" ] || fail "a routine attended wake on a Claude home without the file reached main: $(cat "$home/hook.err")"
   watcher_live "$home" || fail "default-on: the host is not parked on a live successor"
+  # Cleanup restarts the host, whose first cycle closes only on a recovery wake,
+  # and a recovery wake is sent only when there is something to present.
+  seed_open_decision "$home/state" default-on-cleanup
   : > "$home/session.stop"
   stop_home_processes "$home"
 

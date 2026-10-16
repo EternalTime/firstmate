@@ -2787,13 +2787,15 @@ resurface_after_downtime() {
     # assuming it additionally covers a generation a drain has already moved to
     # handling or acked while racing this watcher's first poll. Retirement is a
     # separate best-effort step because only a downtime generation is this
-    # watcher's to retire; a handling one belongs to the drain. A failed
-    # retirement is safe to ignore - it means a wake landed alongside this
-    # decision, and the next poll's arm check sees that non-empty queue and
-    # recovers it.
+    # watcher's to retire; a handling one belongs to the drain. The arm check
+    # that chose recovery has already marked the generation announced, so an
+    # announced downtime generation is retired too: left in place, it would
+    # read as announced although no wake ever carried it. A failed retirement
+    # is safe to ignore - it means a wake landed alongside this decision, and
+    # the next poll's arm check sees that non-empty queue and recovers it.
     fm_recovery_marker_snapshot "$WATCHER_DOWNTIME_MARKER" || true
     case "$FM_RECOVERY_MARKER_TOKEN" in
-      pending:downtime:*)
+      pending:downtime:*|announced:downtime:*)
         retire_empty_recovery_episode "${FM_RECOVERY_MARKER_TOKEN##*:}" || true
         ;;
     esac
