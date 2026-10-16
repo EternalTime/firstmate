@@ -62,7 +62,7 @@ For a Firstmate-managed task, include an explicit status instruction:
 ```text
 Append supervisor-visible status lines to <absolute-firstmate-home>/state/<task-id>.status.
 Use only these prefixes for status changes: working:, needs-decision:, blocked:, paused:, done:, failed:.
-Use paused: only for a deliberate known external wait that should be rechecked later, never for a blocker that needs firstmate to act.
+Follow the task brief's status-reporting rule for declaring and resolving waits; bin/fm-brief.sh owns that rule.
 Before doing substantive work, append "working: Codex Desktop thread started".
 While the work is still under way, every line you append also names the slowest step you already finished with the wall-clock seconds it really took, then how many more runs of that step you expect, as in "working: fault reproduced, the full test run took 512s, 2 more runs expected".
 Time that step rather than estimating it, and write "no long step yet" when nothing long has run.
