@@ -5170,7 +5170,7 @@ expectRoute("unrelated open hold plus a routine merged line", hold,
 expectRoute("unrelated open hold stamped with a readable time", "needs-decision [at=10:00] [key=old-hold]: waiting\n",
   "done: sample-a PR merged\n", true);
 expectRoute("routine note that only mentions an open key in prose", hold,
-  "done: sample-a merged, unrelated to [key=old-hold]\n", true);
+  "done: sample-a merged, unrelated to [key=old-hold] for now\n", true);
 expectRoute("mixed routine and decision span", hold,
   "done: sample-b PR merged\nneeds-decision [key=new-call]: pick an option\n", false);
 expectRoute("same-key update to an open decision", hold,
@@ -5186,6 +5186,15 @@ expectRoute("keyed resolution of a never-open key", hold, "resolved [key=never-o
 expectRoute("resolution after a bare resolved word left the unkeyed decision open",
   "needs-decision: choose\nresolved\n", "resolved: answered\n", false);
 expectRoute("captain-held declaration", "working: history\n", "captain-held [key=parked]: deferred to Monday\n", false);
+const tailHold = "needs-decision: deferred captain call [key=tail-hold]\n";
+expectRoute("resolution stating its key at the end of the note", tailHold,
+  "resolved: answered [key=tail-hold]  \n", false);
+expectRoute("same-key update stating its key at the end of the note", tailHold,
+  "working: still gathering evidence [key=tail-hold]\n", false);
+expectRoute("key-less resolution beside an open hold keyed at the note tail", tailHold,
+  "resolved: routine follow-up\n", true);
+expectRoute("note-head key outranks a note-tail token", tailHold,
+  "resolved: [key=other] answered [key=tail-hold]\n", true);
 
 // The host decides the whole close through the offer rule, which must agree.
 stage("mate", hold, "done: sample-c PR merged\n");

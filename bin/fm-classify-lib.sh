@@ -586,17 +586,21 @@ status_event_recorded() {  # <status-file> <new-status-line>
 # Decision key grammar (backward-compatible with the existing "<verb>: <note>"
 # format): an OPTIONAL "[key=<slug>]" token names the decision. Its documented
 # position sits between the verb and the colon, and a complete token at the
-# head of the note is accepted as an EQUIVALENT position, because that
-# misplaced-colon shape is common real worker output whose stated key must
-# never silently collapse into the shared "default" bucket (issue #2109):
+# head of the note, or as the very last thing on the line, is accepted as an
+# EQUIVALENT position, because those misplaced shapes are common real worker
+# output whose stated key must never silently collapse into the shared
+# "default" bucket (issue #2109), where the drain would still show the tag and
+# advertise a --resolve-key the fold could never match:
 #   needs-decision [key=api-shape]: <summary>
 #   needs-decision: [key=api-shape] <summary>
+#   needs-decision: <summary> [key=api-shape]
 #   resolved       [key=api-shape]: <how it was decided>
-# Both positions state the same key and yield the same note (a consumed
-# note-head token is key metadata, stripped from the note); when both positions
-# carry a token, the documented before-colon one wins and the note-head token
-# stays note text. A token deeper inside the note is prose, never a stated key,
-# so a summary merely MENTIONING "[key=x]" cannot open or close that decision.
+# All positions state the same key and yield the same note (a consumed
+# note-head or note-tail token is key metadata, stripped from the note); when
+# several positions carry a token, the documented before-colon one wins, then
+# the note head, and the others stay note text. A token anywhere else inside
+# the note is prose, never a stated key, so a summary merely MENTIONING
+# "[key=x]" mid-sentence cannot open or close that decision.
 # A line with no token in either position uses the key "default", preserving
 # the historical one-open-decision-per-task behavior (a bare "resolved:" closes
 # "default"). A stated key whose slug fails the charset below is rejected (the
@@ -713,6 +717,24 @@ _fm_key_at_note_head() {  # <status-line> -> raw slug
     *) return 1 ;;
   esac
 }
+# Raw slug of a complete "[key=<slug>]" token that ends the note (the last
+# thing on the line, ignoring trailing whitespace). Fails when the line has no
+# colon or does not end in a complete token; slug charset validity is the
+# caller's check, exactly as for the other two positions.
+_fm_key_at_note_tail() {  # <status-line> -> raw slug
+  local rest
+  case "$1" in
+    *:*) rest=${1#*:} ;;
+    *) return 1 ;;
+  esac
+  rest=${rest%"${rest##*[![:space:]]}"}
+  case "$rest" in
+    *\[key=*\]) rest=${rest##*\[key=}; rest=${rest%\]} ;;
+    *) return 1 ;;
+  esac
+  case "$rest" in *\]*) return 1 ;; esac
+  printf '%s' "$rest"
+}
 # 0 when a stated key slug is well-formed: nonempty, A-Za-z0-9._- only.
 _fm_decision_slug_ok() {  # <slug>
   case "$1" in
@@ -731,13 +753,20 @@ status_line_note() {  # <status-line> -> text after the first colon, trimmed
     *:*) n=${unstamped#*:}; n=${n#"${n%%[![:space:]]*}"} ;;
     *) printf '%s' "$unstamped"; return 0 ;;
   esac
-  # A note-head token that states this line's key (no before-colon token, valid
-  # slug) is key metadata, not note text: strip it so both stated-key positions
-  # yield the same note.
-  if ! _fm_key_before_colon "$unstamped" && k=$(_fm_key_at_note_head "$unstamped") \
-    && _fm_decision_slug_ok "$k"; then
-    n=${n#"[key=$k]"}
-    n=${n#"${n%%[![:space:]]*}"}
+  # A note-head or note-tail token that states this line's key (no earlier
+  # position carries one, valid slug) is key metadata, not note text: strip it
+  # so every stated-key position yields the same note.
+  if ! _fm_key_before_colon "$unstamped"; then
+    if k=$(_fm_key_at_note_head "$unstamped"); then
+      if _fm_decision_slug_ok "$k"; then
+        n=${n#"[key=$k]"}
+        n=${n#"${n%%[![:space:]]*}"}
+      fi
+    elif k=$(_fm_key_at_note_tail "$unstamped") && _fm_decision_slug_ok "$k"; then
+      n=${n%"${n##*[![:space:]]}"}
+      n=${n%"[key=$k]"}
+      n=${n%"${n##*[![:space:]]}"}
+    fi
   fi
   printf '%s' "$n"
 }
@@ -749,7 +778,8 @@ _fm_decision_key() {  # <status-line> [<keyless>] -> key slug, or <keyless> (def
     k=${k#*\[key=}
     k=${k%%\]*}
   else
-    k=$(_fm_key_at_note_head "$unstamped") || { printf '%s' "${2-default}"; return 0; }
+    k=$(_fm_key_at_note_head "$unstamped") || k=$(_fm_key_at_note_tail "$unstamped") \
+      || { printf '%s' "${2-default}"; return 0; }
   fi
   _fm_decision_slug_ok "$k" || return 1
   printf '%s' "$k"
@@ -1212,10 +1242,12 @@ _fm_open_decisions_cursor_path() {  # <status-file>
 # malformed worker stamp whose colons used to pose as the head/note separator
 # no longer opens or closes anything; cursors folded under that reading are
 # discarded.
+# 10: a complete "[key=...]" token ending the note now states the line's key,
+# so a cursor that folded such a line under "default" is discarded.
 # Version 4 was already spent on the bracketed-tag parser change above, and a
 # cursor persisted under that reading predates this one, so it must still be
 # discarded and rebuilt from byte 0 under the new reading.
-FM_OPEN_DECISIONS_FOLD_VERSION=9
+FM_OPEN_DECISIONS_FOLD_VERSION=10
 
 # Portable device:inode identity for the rotation/recreation check below.
 _fm_open_decisions_file_ident() {  # <file> -> strongest available identity
