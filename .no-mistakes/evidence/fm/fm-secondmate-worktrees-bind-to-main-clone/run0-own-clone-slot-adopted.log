@@ -1,0 +1,24 @@
+$ cd /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/projects/proj && /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M530F7WJAPBV7V5Q5RMF5MDG/bin/fm-spawn.sh xclone-new-a1 /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/projects/proj --mode local-only --yolo off
+# fm-root=/Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M530F7WJAPBV7V5Q5RMF5MDG  TREEHOUSE_ROOT=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/pool
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS
+warning: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/data/xclone-new-a1/launch-brief.md records no ship branch; defaulting to legacy branch fm/xclone-new-a1
+warning: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/data/xclone-new-a1/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode local-only - confirm its definition of done matches
+notice: xclone-new-a1 ships mode=local-only while the standing posture for proj is no-mistakes - less rigor than the captain's standing posture; proceed only on a current explicit captain instruction or an intake judgment you can state
+spawned xclone-new-a1 harness=claude kind=ship mode=local-only yolo=off window=primary:fm-xclone-new-a1 worktree=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/pool/.treehouse/proj-03be50/2/proj
+# exit=0 after 6s
+# state/xclone-new-a1.meta:
+window=primary:fm-xclone-new-a1
+endpoint_task_id=xclone-new-a1
+worktree=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/pool/.treehouse/proj-03be50/2/proj
+project=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/projects/proj
+harness=claude
+kind=ship
+mode=local-only
+yolo=off
+branch=fm/xclone-new-a1
+tasktmp=/tmp/fm-xclone-new-a1
+model=default
+effort=default
+busy_gen=g1792176569.78708.19994
+spawn_gen=s1792176570.72510.7272
+DONE

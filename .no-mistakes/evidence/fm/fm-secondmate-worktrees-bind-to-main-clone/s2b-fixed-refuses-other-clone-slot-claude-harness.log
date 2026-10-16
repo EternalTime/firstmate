@@ -1,0 +1,17 @@
+$ cd /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/projects/proj && /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M530F7WJAPBV7V5Q5RMF5MDG/bin/fm-spawn.sh s2d-new-stuck-claude /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/projects/proj --mode local-only --yolo off 
+# fm-root=/Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M530F7WJAPBV7V5Q5RMF5MDG  TREEHOUSE_ROOT=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/pool2
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS
+warning: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/data/s2d-new-stuck-claude/launch-brief.md records no ship branch; defaulting to legacy branch fm/s2d-new-stuck-claude
+warning: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/data/s2d-new-stuck-claude/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode local-only - confirm its definition of done matches
+notice: s2d-new-stuck-claude ships mode=local-only while the standing posture for proj is no-mistakes - less rigor than the captain's standing posture; proceed only on a current explicit captain instruction or an intake judgment you can state
+error: treehouse get did not enter an isolated worktree within 60s (last seen '/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/pool2/.treehouse/proj-03be50/1/proj': it is a worktree of another clone (common git dir '/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/other-home/proj/.git'), not of the spawning project's own clone (common git dir '/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/projects/proj/.git'); spawning project '/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/projects/proj'); inspect window primary:fm-s2d-new-stuck-claude
+# exit=1 after 73s
+# state/s2d-new-stuck-claude.meta:
+cat: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/state/s2d-new-stuck-claude.meta: No such file or directory
+DONE
+# worker pane cwd: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/pool2/.treehouse/proj-03be50/1/proj
+# worker pane screen:
+lab proj treehouse get
+lab: handed slot /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab
+.L6FEvS/pool2/.treehouse/proj-03be50/1/proj
+lab proj

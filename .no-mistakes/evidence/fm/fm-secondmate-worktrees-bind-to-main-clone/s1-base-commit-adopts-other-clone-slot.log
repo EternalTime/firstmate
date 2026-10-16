@@ -1,0 +1,44 @@
+$ cd /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/projects/proj && /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/base/bin/fm-spawn.sh s1c-base-stuck-raw /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/projects/proj --mode local-only --yolo off --harness "sleep 900"
+# fm-root=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/base  TREEHOUSE_ROOT=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/pool2
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS
+warning: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/data/s1c-base-stuck-raw/launch-brief.md records no ship branch; defaulting to legacy branch fm/s1c-base-stuck-raw
+warning: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/data/s1c-base-stuck-raw/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode local-only - confirm its definition of done matches
+notice: s1c-base-stuck-raw ships mode=local-only while the standing posture for proj is no-mistakes - less rigor than the captain's standing posture; proceed only on a current explicit captain instruction or an intake judgment you can state
+spawned s1c-base-stuck-raw harness=sleep kind=ship mode=local-only yolo=off window=primary:fm-s1c-base-stuck-raw worktree=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/pool2/.treehouse/proj-03be50/1/proj
+# exit=0 after 4s
+# state/s1c-base-stuck-raw.meta:
+window=primary:fm-s1c-base-stuck-raw
+endpoint_task_id=s1c-base-stuck-raw
+worktree=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/pool2/.treehouse/proj-03be50/1/proj
+project=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/projects/proj
+harness=sleep
+kind=ship
+mode=local-only
+yolo=off
+branch=fm/s1c-base-stuck-raw
+tasktmp=/tmp/fm-s1c-base-stuck-raw
+model=default
+effort=default
+spawn_gen=s1792176768.14256.29383
+DONE
+# worker pane cwd: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/pool2/.treehouse/proj-03be50/1/proj
+# worker pane screen:
+lab proj treehouse get
+lab: handed slot /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab
+.L6FEvS/pool2/.treehouse/proj-03be50/1/proj
+lab proj cd -- '/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.
+L6FEvS/pool2/.treehouse/proj-03be50/1/proj'
+lab proj export GOTMPDIR=/tmp/fm-s1c-base-stuck-raw/gotmp
+lab proj export COMPACT_ADVISER_DISABLE=1
+lab proj export FM_TASK_ID=s1c-base-stuck-raw
+lab proj . '/tmp/fm-s1c-base-stuck-raw+41ae7632a896cbee781b62244ab2ca779adf0ff61
+114bf400ad9ae72227178d9/launch.s1792176768.14256.29383.sh'
+# recorded worktree's git common dir: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/other-home/proj/.git
+# branches now in the OTHER home's clone:
+* main
+  remotes/origin/HEAD -> origin/main
+  remotes/origin/main
+# branches in the spawning clone:
+* main
+  remotes/origin/HEAD -> origin/main
+  remotes/origin/main

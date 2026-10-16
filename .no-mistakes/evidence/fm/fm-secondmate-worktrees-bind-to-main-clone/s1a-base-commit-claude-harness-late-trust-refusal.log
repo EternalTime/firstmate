@@ -1,0 +1,21 @@
+$ cd /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/projects/proj && /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/base/bin/fm-spawn.sh s1b-base-stuck /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/projects/proj --mode local-only --yolo off
+# fm-root=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/base  TREEHOUSE_ROOT=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/pool2
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS
+warning: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/data/s1b-base-stuck/launch-brief.md records no ship branch; defaulting to legacy branch fm/s1b-base-stuck
+warning: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/data/s1b-base-stuck/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode local-only - confirm its definition of done matches
+notice: s1b-base-stuck ships mode=local-only while the standing posture for proj is no-mistakes - less rigor than the captain's standing posture; proceed only on a current explicit captain instruction or an intake judgment you can state
+error: refusing to pre-register Claude trust: '/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/pool2/.treehouse/proj-03be50/1/proj' is not a worktree of project '/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/projects/proj'
+error: could not pre-register Claude workspace trust for /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/pool2/.treehouse/proj-03be50/1/proj; refusing to launch a claude worker that would wedge on the trust dialog; inspect window primary:fm-s1b-base-stuck
+# exit=1 after 3s
+# state/s1b-base-stuck.meta:
+cat: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/state/s1b-base-stuck.meta: No such file or directory
+DONE
+# worker pane cwd: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.L6FEvS/pool2/.treehouse/proj-03be50/1/proj
+# worker pane screen:
+lab proj treehouse get
+lab: handed slot /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab
+.L6FEvS/pool2/.treehouse/proj-03be50/1/proj
+lab proj cd -- '/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.
+L6FEvS/pool2/.treehouse/proj-03be50/1/proj'
+lab proj
+# recorded worktree's git common dir: /Users/owlshome/.no-mistakes/repos/5e738cfca1e1.git
