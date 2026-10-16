@@ -1,0 +1,52 @@
+
+### A: em dash in a tracked shell script string (default run) -> must fail
+$ bin/fm-lint.sh 
+fm-lint.sh: local changed-file mode; ShellCheck source following disabled
+bin/fm-scratch.sh:2: em dash; use a plain dash "-"
+exit=
+
+### A2: same file as explicit path -> must fail
+$ bin/fm-lint.sh bin/fm-scratch.sh
+fm-lint.sh: full ShellCheck extended analysis enabled
+bin/fm-scratch.sh:2: em dash; use a plain dash "-"
+exit=
+
+### B: reintroduce the daemon escalate-message em dash -> must fail
+$ bin/fm-lint.sh 
+fm-lint.sh: local changed-file mode; ShellCheck source following disabled
+bin/fm-supervise-daemon.sh:889: em dash; use a plain dash "-"
+exit=
+
+### C: docs/verification prose em dash fails, fenced output passes
+$ bin/fm-lint.sh 
+fm-lint.sh: local changed-file mode; ShellCheck source following disabled
+docs/verification/scratch-prose.md:3: em dash; use a plain dash "-"
+exit=
+
+### C2: only fenced em dash remains in docs/verification -> must pass
+$ bin/fm-lint.sh 
+fm-lint.sh: local changed-file mode; ShellCheck source following disabled
+exit=
+
+### D: prose right after a closed fence is still checked -> must fail on line 6 only
+$ bin/fm-lint.sh 
+fm-lint.sh: local changed-file mode; ShellCheck source following disabled
+docs/verification/scratch-fence2.md:6: em dash; use a plain dash "-"
+exit=
+
+### E: fenced em dash outside docs/verification is NOT exempt -> must fail
+$ bin/fm-lint.sh 
+fm-lint.sh: local changed-file mode; ShellCheck source following disabled
+docs/scratch.md:4: em dash; use a plain dash "-"
+exit=
+
+### F: quoted mention passes, real em dash on a line with a mention still fails (line 2 only)
+$ bin/fm-lint.sh 
+fm-lint.sh: local changed-file mode; ShellCheck source following disabled
+docs/scratch2.md:2: em dash; use a plain dash "-"
+exit=
+
+### G: tests/fixtures capture and an untracked file do not fail lint -> must pass
+$ bin/fm-lint.sh 
+fm-lint.sh: local changed-file mode; ShellCheck source following disabled
+exit=

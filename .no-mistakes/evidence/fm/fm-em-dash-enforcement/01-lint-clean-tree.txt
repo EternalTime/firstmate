@@ -1,0 +1,7 @@
+$ bin/fm-lint.sh   # full default run on the branch tree
+fm-lint.sh: ShellCheck 0.11.0 (pinned 0.11.0)
+fm-lint.sh: local changed-file mode; ShellCheck source following disabled
+fm-lint-workflows.sh: actionlint 1.7.12 (pinned 1.7.12)
+fm-lint-workflows.sh: 3 workflow files valid
+bin/fm-lint.sh  10.75s user 0.60s system 148% cpu 7.635 total
+exit=0

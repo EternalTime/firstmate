@@ -1,0 +1,104 @@
+$ git diff --cached --stat
+ CONTRIBUTING.md           | 1 +
+ bin/fm-tmux-lib.sh        | 2 +-
+ docs/verification/rovo.md | 6 ++++++
+ tests/fixtures/new.ansi   | 1 +
+ 4 files changed, 9 insertions(+), 1 deletion(-)
+
+$ bin/fm-lint.sh   # default mode with injected em dashes
+fm-lint.sh: ShellCheck 0.11.0 (pinned 0.11.0)
+fm-lint.sh: local changed-file mode; ShellCheck source following disabled
+
+In tests/fm-lint.test.sh line 1253:
+  printf '# Probe\n\n```\n$ tool status\nauthenticated %s token valid\n```\n\nThe probe passed.\n' "$dash" \
+         ^-- SC2016 (info): Expressions don't expand in single quotes, use double quotes for that.
+
+
+In tests/fm-lint.test.sh line 1255:
+  printf '# Probe\n\n```\nauthenticated\n```\n\nThe probe passed %s token valid.\n' "$dash" \
+         ^-- SC2016 (info): Expressions don't expand in single quotes, use double quotes for that.
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2016 -- Expressions don't expand in singl...
+CONTRIBUTING.md:155: em dash; use a plain dash "-"
+bin/fm-tmux-lib.sh:2: em dash; use a plain dash "-"
+docs/verification/rovo.md:239: em dash; use a plain dash "-"
+fm-lint-workflows.sh: actionlint 1.7.12 (pinned 1.7.12)
+fm-lint-workflows.sh: 3 workflow files valid
+exit=1
+
+$ bin/fm-lint.sh bin/fm-tmux-lib.sh docs/verification/rovo.md tests/fixtures/new.ansi untracked-note.md
+fm-lint.sh: ShellCheck 0.11.0 (pinned 0.11.0)
+fm-lint.sh: full ShellCheck extended analysis enabled
+
+In docs/verification/rovo.md line 1:
+# Verification: the rovo (Atlassian Rovo CLI) crewmate/scout adapter
+^-- SC2148 (error): Tips depend on target shell and yours is unknown. Add a shebang or a 'shell' directive.
+
+
+In docs/verification/rovo.md line 3:
+Active empirical evidence for firstmate's rovo adapter.
+                                       ^-- SC2016 (info): Expressions don't expand in single quotes, use double quotes for that.
+
+
+In docs/verification/rovo.md line 17:
+Every command below ran unsandboxed, because rovo's OAuth credentials live in the macOS keychain, which a sandboxed shell cannot read.
+                                                 ^-- SC1011 (warning): This apostrophe terminated the single quoted string!
+                                                  ^-- SC2026 (info): This word is outside of quotes. Did you intend to 'nest '"'single quotes'"' instead'? 
+
+
+In docs/verification/rovo.md line 21:
+```
+  ^-- SC2046 (warning): Quote this to prevent word splitting.
+  ^-- SC2006 (style): Use $(...) notation instead of legacy backticks `...`.
+
+Did you mean:
+``$(
+$ rovo --version
+Rovo CLI: 202609.1.2
+)``
+
+
+In docs/verification/rovo.md line 26:
+`bin/fm-harness.sh` tests `ATLASSIAN_AGENT_TYPE=rovo` and `ROVODEV_CLI=1` before the `CLAUDECODE` line and matches ancestry `comm=rovo` otherwise; `tests/fm-rovo-harness.test.sh` pins both the marker-precedence order (a rovo marker outranks an inherited `CLAUDECODE`) and the markerless-ancestry fallback with faked `ps` output.
+^-----------------^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`.
+                          ^-------------------------^ SC2046 (warning): Quote this to prevent word splitting.
+                          ^-------------------------^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`.
+                           ^------------------^ SC2034 (warning): ATLASSIAN_AGENT_TYPE appears unused. Verify use (or export if used externally).
+                                                          ^-------------^ SC2046 (warning): Quote this to prevent word splitting.
+                                                          ^-------------^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`.
+                                                           ^---------^ SC2034 (warning): ROVODEV_CLI appears unused. Verify use (or export if used externally).
+                                                                                     ^----------^ SC2046 (warning): Quote this to prevent word splitting.
+                                                                                     ^----------^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`.
+                                                                                                                            ^---------^ SC2046 (warning): Quote this to prevent word splitting.
+                                                                                                                            ^---------^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`.
+                                                                                                                             ^--^ SC2034 (warning): comm appears unused. Verify use (or export if used externally).
+                                                                                                                                                   ^-----------------------------^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`.
+                                                                                                                                                                                                                         ^-- SC1036 (error): '(' is invalid here. Did you forget to escape it?
+                                                                                                                                                                                                                         ^-- SC1088 (error): Parsing stopped here. Invalid use of parentheses?
+
+Did you mean:
+$(bin/fm-harness.sh) tests $(ATLASSIAN_AGENT_TYPE=rovo) and $(ROVODEV_CLI=1) before the $(CLAUDECODE) line and matches ancestry $(comm=rovo) otherwise; $(tests/fm-rovo-harness.test.sh) pins both the marker-precedence order (a rovo marker outranks an inherited `CLAUDECODE`) and the markerless-ancestry fallback with faked `ps` output.
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2148 -- Tips depend on target shell and y...
+  https://www.shellcheck.net/wiki/SC1011 -- This apostrophe terminated the si...
+  https://www.shellcheck.net/wiki/SC2034 -- ATLASSIAN_AGENT_TYPE appears unus...
+
+In tests/fixtures/new.ansi line 1:
+new fixture — capture
+^-- SC2148 (error): Tips depend on target shell and yours is unknown. Add a shebang or a 'shell' directive.
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2148 -- Tips depend on target shell and y...
+
+In untracked-note.md line 1:
+untracked — file
+^-- SC2148 (error): Tips depend on target shell and yours is unknown. Add a shebang or a 'shell' directive.
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2148 -- Tips depend on target shell and y...
+bin/fm-tmux-lib.sh:2: em dash; use a plain dash "-"
+docs/verification/rovo.md:239: em dash; use a plain dash "-"
+untracked-note.md:1: em dash; use a plain dash "-"
+exit=1

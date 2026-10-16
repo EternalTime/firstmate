@@ -1,0 +1,18 @@
+$ bin/fm-lint.sh
+fm-lint.sh: ShellCheck 0.11.0 (pinned 0.11.0)
+fm-lint.sh: local changed-file mode; ShellCheck source following disabled
+
+In tests/fm-lint.test.sh line 1253:
+  printf '# Probe\n\n```\n$ tool status\nauthenticated %s token valid\n```\n\nThe probe passed.\n' "$dash" \
+         ^-- SC2016 (info): Expressions don't expand in single quotes, use double quotes for that.
+
+
+In tests/fm-lint.test.sh line 1255:
+  printf '# Probe\n\n```\nauthenticated\n```\n\nThe probe passed %s token valid.\n' "$dash" \
+         ^-- SC2016 (info): Expressions don't expand in single quotes, use double quotes for that.
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2016 -- Expressions don't expand in singl...
+fm-lint-workflows.sh: actionlint 1.7.12 (pinned 1.7.12)
+fm-lint-workflows.sh: 3 workflow files valid
+exit=1

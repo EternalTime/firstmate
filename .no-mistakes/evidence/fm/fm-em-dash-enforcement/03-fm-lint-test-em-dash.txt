@@ -1,0 +1,5 @@
+ok - ShellCheck installer retries a transient download failure
+ok - missing ShellCheck fails closed
+ok - fm-lint.sh rejects em dashes everywhere except verbatim evidence, fenced verification output, and quoted mentions
+ok - jobs=1 and jobs=2 preserve deterministic diagnostics, failures, cleanup bounds, and quiet telemetry
+ok - memory failures retry without source following, exclude cross-file codes, and preserve a real fallback finding

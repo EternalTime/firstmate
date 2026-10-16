@@ -1,0 +1,11 @@
+
+### docs/verification prose em dash + fenced em dash -> expect exit 1, only prose line reported
+docs/verification/scratch-prose.md:3: em dash; use a plain dash "-"
+exit=1
+
+### only fenced docs/verification, tests/fixtures capture, untracked file -> expect exit 0
+exit=0
+
+### top-level tracked NOTES.md with real em dash -> expect exit 1
+NOTES.md:1: em dash; use a plain dash "-"
+exit=1

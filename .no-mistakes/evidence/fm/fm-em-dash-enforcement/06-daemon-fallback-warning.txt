@@ -1,0 +1,4 @@
+$ FM_HOME=$LAB (lab home, no TMUX_PANE / HERDR / FM_SUPERVISOR_TARGET) bin/fm-supervise-daemon.sh
+warn: could not auto-discover supervisor pane (no FM_SUPERVISOR_TARGET, TMUX_PANE, or HERDR_ENV/HERDR_PANE_ID); falling back to 'firstmate:0' - verify this is firstmate's pane
+error: supervisor target 'firstmate:0' does not resolve to a tmux pane; set FM_SUPERVISOR_TARGET
+exit=1
