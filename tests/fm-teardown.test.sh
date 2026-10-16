@@ -1675,6 +1675,126 @@ test_forced_secondmate_dirty_child_return_warns_and_completes() {
   pass "a forced secondmate teardown warns about a dirty child return and still completes"
 }
 
+# A retired leased home goes back to the pool, so the return must not hand the
+# next worker its private records. This fake return behaves like treehouse's:
+# it resets tracked files and removes untracked ones but leaves ignored paths.
+# FM_FAKE_TREEHOUSE_RETURN_FAIL=1 makes the return fail instead.
+add_treehouse_that_keeps_ignored_paths() {
+  local case_dir=$1
+  cat > "$case_dir/fakebin/treehouse" <<'SH'
+#!/usr/bin/env bash
+if [ "${1:-}" = return ]; then
+  for a in "$@"; do wt=$a; done
+  [ "${FM_FAKE_TREEHOUSE_RETURN_FAIL:-0}" != 1 ] || { echo "fatal: return failed" >&2; exit 1; }
+  git -C "$wt" reset -q --hard && git -C "$wt" clean -qfd
+fi
+exit 0
+SH
+  chmod +x "$case_dir/fakebin/treehouse"
+}
+
+# Build a secondmate home leased from a pool slot of a stand-in firstmate repo,
+# holding the private records a real home holds. Echoes the home path.
+make_leased_secondmate_home() {
+  local case_dir=$1 root home name
+  root="$case_dir/fm-root"
+  home="$case_dir/pool/3/firstmate"
+  git clone -q "$case_dir/origin.git" "$root"
+  printf '%s\n' data/ state/ config/ projects/ scratch/ .fm-secondmate-home .fm-secondmate-parent .env > "$root/.gitignore"
+  git -C "$root" add .gitignore
+  git -C "$root" -c user.email=t@t -c user.name=t commit -q -m "ignore private records"
+  mkdir -p "$case_dir/pool/3"
+  git -C "$root" worktree add -q --detach "$home" HEAD
+  for name in data state config projects scratch; do
+    mkdir -p "$home/$name"
+    printf '%s\n' "private $name" > "$home/$name/record.md"
+  done
+  mkdir -p "$home/projects/alpha/.git"
+  printf '%s\n' task-x1 > "$home/.fm-secondmate-home"
+  printf 'schema=fm-secondmate-parent.v1\nroute=local\n' > "$home/.fm-secondmate-parent"
+  printf '%s\n' SECRET=1 > "$home/.env"
+  printf '%s\n' "$home"
+}
+
+# Like run_teardown, but the stand-in firstmate repo owns the pool slot.
+run_leased_home_teardown() {
+  local case_dir=$1; shift
+  FM_ROOT_OVERRIDE="$case_dir/fm-root" \
+  FM_STATE_OVERRIDE="$case_dir/state" \
+  FM_DATA_OVERRIDE="$case_dir/data" \
+  FM_CONFIG_OVERRIDE="$case_dir/config" \
+  PATH="$case_dir/fakebin:${FM_TEARDOWN_TEST_PATH:-$PATH}" \
+    "$TEARDOWN" task-x1 "$@"
+}
+
+test_retired_leased_home_returns_without_its_private_records() {
+  local case_dir home rc name archive
+  case_dir=$(make_case leased-home-private-records)
+  home=$(make_leased_secondmate_home "$case_dir")
+  write_meta "$case_dir" local-only secondmate
+  printf '%s\n' "home=$home" >> "$case_dir/state/task-x1.meta"
+  add_treehouse_that_keeps_ignored_paths "$case_dir"
+
+  rc=0
+  run_leased_home_teardown "$case_dir" --force > "$case_dir/stdout" 2> "$case_dir/stderr" || rc=$?
+
+  expect_code 0 "$rc" "leased-home-private-records: retiring a leased home should succeed"
+  for name in data state config projects scratch .fm-secondmate-home .fm-secondmate-parent .env; do
+    assert_absent "$home/$name" "leased-home-private-records: the returned slot still holds $name"
+  done
+  [ -f "$home/.gitignore" ] || fail "leased-home-private-records: the return removed the slot's tracked files"
+  [ -z "$(git -C "$home" status --porcelain --ignored)" ] \
+    || fail "leased-home-private-records: the returned slot holds more than its tracked files"
+
+  archive=$(find "$case_dir/data/retired-homes" -mindepth 1 -maxdepth 1 -name 'task-x1-*' 2>/dev/null)
+  [ "$(printf '%s\n' "$archive" | grep -c .)" -eq 1 ] \
+    || fail "leased-home-private-records: expected one archive of the retired home, got: $archive"
+  case "${archive##*/}" in
+    task-x1-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]T[0-9][0-9][0-9][0-9][0-9][0-9]Z) ;;
+    *) fail "leased-home-private-records: archive ${archive##*/} is not named <id>-<UTC timestamp>" ;;
+  esac
+  for name in data state config; do
+    assert_grep "private $name" "$archive/files/$name/record.md" \
+      "leased-home-private-records: the $name records were not kept in the archive"
+  done
+  assert_grep task-x1 "$archive/files/.fm-secondmate-home" "leased-home-private-records: the home marker was not kept"
+  assert_grep route=local "$archive/files/.fm-secondmate-parent" "leased-home-private-records: the parent marker was not kept"
+  assert_grep SECRET=1 "$archive/files/.env" "leased-home-private-records: the ignored .env was not kept"
+  assert_absent "$archive/files/projects" "leased-home-private-records: the project clones were kept in the archive"
+  assert_absent "$archive/files/scratch" "leased-home-private-records: a staged path that is not a home record was kept"
+  assert_absent "$case_dir/state/task-x1.meta" "leased-home-private-records: task record was not removed"
+  pass "a retired leased home goes back to the pool clean, with its private records kept in the parent archive"
+}
+
+test_failed_leased_home_return_keeps_its_private_records() {
+  local case_dir home rc name
+  case_dir=$(make_case leased-home-failed-return)
+  home=$(make_leased_secondmate_home "$case_dir")
+  write_meta "$case_dir" local-only secondmate
+  printf '%s\n' "home=$home" >> "$case_dir/state/task-x1.meta"
+  add_treehouse_that_keeps_ignored_paths "$case_dir"
+
+  rc=0
+  FM_FAKE_TREEHOUSE_RETURN_FAIL=1 run_leased_home_teardown "$case_dir" --force \
+    > "$case_dir/stdout" 2> "$case_dir/stderr" || rc=$?
+
+  [ "$rc" -ne 0 ] || fail "leased-home-failed-return: a failed return should fail the retirement"
+  assert_grep "lease may still be held" "$case_dir/stderr" \
+    "leased-home-failed-return: fixture did not reach the failed return"
+  for name in data state config projects scratch; do
+    assert_grep "private $name" "$home/$name/record.md" \
+      "leased-home-failed-return: the $name records were not put back"
+  done
+  [ -d "$home/projects/alpha/.git" ] || fail "leased-home-failed-return: the project clone was not put back"
+  assert_grep task-x1 "$home/.fm-secondmate-home" "leased-home-failed-return: the home marker was not put back"
+  assert_grep route=local "$home/.fm-secondmate-parent" "leased-home-failed-return: the parent marker was not put back"
+  assert_grep SECRET=1 "$home/.env" "leased-home-failed-return: the ignored .env was not put back"
+  [ -z "$(find "$case_dir/data/retired-homes" -mindepth 1 2>/dev/null)" ] \
+    || fail "leased-home-failed-return: an archive was left for a home that was not retired"
+  [ -e "$case_dir/state/task-x1.meta" ] || fail "leased-home-failed-return: the task record was removed"
+  pass "a failed leased-home return puts every private record back and keeps the retirement records"
+}
+
 test_return_that_removes_copy_warns_cannot_verify() {
   local case_dir wt rc
   case_dir=$(make_case return-removes-copy)
@@ -5088,6 +5208,8 @@ test_dirty_return_warns_which_slot_was_lost
 test_dirty_return_warns_even_when_a_later_step_refuses
 test_forced_secondmate_child_scout_nested_clone_returns_clean
 test_forced_secondmate_dirty_child_return_warns_and_completes
+test_retired_leased_home_returns_without_its_private_records
+test_failed_leased_home_return_keeps_its_private_records
 test_return_that_removes_copy_warns_cannot_verify
 test_scout_ignored_files_survive_scratch_clean
 test_gh_error_and_content_absent_refuses
