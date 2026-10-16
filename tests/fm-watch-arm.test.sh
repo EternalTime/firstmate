@@ -1325,6 +1325,14 @@ expect_silent_arm() {  # <label> <arm-out>
   fail "$label woke with nothing to report: $(cat "$out")"
 }
 
+expect_retired_episode() {  # <label> <state>
+  local label=$1 state=$2 token
+  token=$(cat "$state/.watcher-down" 2>/dev/null || true)
+  case "$token" in
+    pending:*|announced:*) fail "$label left its empty recovery episode unretired: $token" ;;
+  esac
+}
+
 # A recovery presentation has four independent sources: unacknowledged queue
 # rows, still-open decisions, unread informational status lines, and a task's
 # captain-relevant latest event the status outcome backstop has not presented
@@ -1436,6 +1444,7 @@ test_empty_fleet_recovery_stays_silent_across_rearms() {
     out="$dir/rearm-$cycle.out"
     start_rearm_arm "$home" "$state" "$fakebin" "$out"
     expect_silent_arm "re-arm $cycle over an empty fleet" "$out"
+    expect_retired_episode "re-arm $cycle over an empty fleet" "$state"
     FM_HOME="$home" FM_STATE_OVERRIDE="$state" "$DRAIN" > "$dir/drain-$cycle.out" 2>/dev/null \
       || fail "empty-fleet drain $cycle failed"
     [ ! -s "$dir/drain-$cycle.out" ] \
@@ -1483,6 +1492,7 @@ test_reclaimed_stale_lock_obeys_the_presentable_test() {
   [ "$lock_pid" = "$ARM_PID" ] \
     || fail "the watcher did not reclaim the stale lock itself, so this case proves nothing: $(cat "$dir/silent.out")"
   expect_silent_arm "a stale-lock reclaim over an empty fleet" "$dir/silent.out"
+  expect_retired_episode "a stale-lock reclaim over an empty fleet" "$state"
   FM_HOME="$home" FM_STATE_OVERRIDE="$state" "$DRAIN" > "$dir/silent-drain.out" 2>/dev/null \
     || fail "stale-lock reclaim drain failed"
   [ ! -s "$dir/silent-drain.out" ] \
