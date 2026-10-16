@@ -1170,10 +1170,25 @@ fm_remote_job_probe() { # <account-home>; require a fresh heartbeat outside an a
   [ $((now - mtime)) -le 10 ]
 }
 
+# A heartbeat that checked ownership just before its owner died can still
+# refresh worker.ready once afterwards, beside the dead owner's identity file.
+# Startup readiness therefore counts only when the verified live lock owner is
+# the published worker pid and the ready file names that same owner.
+fm_remote_job_ready_owner_live() { # <account-home>
+  local account_home=$1 pid owner
+  [ "${FM_REMOTE_JOB_ACTIVE:-}" != 1 ] || return 0
+  fm_remote_job_lock_owner_matches_process "$account_home" || return 1
+  pid=$(fm_remote_job_read_single_line "$(fm_remote_job_worker_pid_path)" 64 2>/dev/null) || return 1
+  [ "$pid" = "$FM_REMOTE_JOB_OWNER_PID" ] || return 1
+  owner=$(fm_remote_job_read_single_line "$(fm_remote_job_worker_ready_path)" 64 2>/dev/null) || return 1
+  [ "$owner" = "$pid" ]
+}
+
 fm_remote_job_wait_for_probe() { # <remote-root> <account-home>
   local root=$1 account_home=$2 i=0
   while [ "$i" -lt 200 ]; do
-    fm_remote_job_probe "$account_home" && fm_remote_job_worker_identity_matches "$root" "$account_home" && return 0
+    fm_remote_job_probe "$account_home" && fm_remote_job_ready_owner_live "$account_home" &&
+      fm_remote_job_worker_identity_matches "$root" "$account_home" && return 0
     i=$((i + 1))
     sleep 0.1
   done

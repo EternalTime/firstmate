@@ -31,8 +31,12 @@
 # scan work and scheduling time. A separate heartbeat process refreshes readiness
 # about once per second, including during slow scans and sweeps, only while the
 # serving process is alive and its recorded lock ownership still verifies.
-# The heartbeat recreates a missing ready file with the serving process's PID
-# and mode 0600 after verifying ownership, without waiting for the serving loop.
+# The heartbeat rewrites a missing ready file, or one naming any other PID, with
+# the serving process's PID and mode 0600 after verifying ownership, without
+# waiting for the serving loop. A refresh already past its ownership check can
+# still land once after the serving process dies, so startup readiness also
+# requires the live owner, and the replacement's heartbeat overwrites that stale
+# PID on its next refresh.
 # Losing lock ownership stops heartbeat refresh; losing the heartbeat process
 # while still owning the lock stops the serving loop on its next pass.
 # The stale sweep, whose state preparation also re-applies the queue directories' 0700
@@ -121,10 +125,10 @@ worker_heartbeat_loop() { # <account-home> <owner-pid>
     [ -n "$owner_state" ] && [[ "$owner_state" != *Z* ]] &&
     fm_remote_job_lock_owner_matches_process "$account_home" &&
     [ "$FM_REMOTE_JOB_OWNER_PID" = "$owner" ]; do
-    if [ ! -e "$ready" ] && [ ! -L "$ready" ]; then
-      worker_write_heartbeat "$owner" || exit 1
-    else
+    if [ "$(fm_remote_job_read_single_line "$ready" 64 2>/dev/null)" = "$owner" ]; then
       touch -c -- "$ready" || exit 1
+    else
+      worker_write_heartbeat "$owner" || exit 1
     fi
     /bin/sleep 1
   done
