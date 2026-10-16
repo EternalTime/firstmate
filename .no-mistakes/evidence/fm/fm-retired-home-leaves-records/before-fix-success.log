@@ -1,0 +1,93 @@
+== firstmate rev e2b866e, scenario success, lab /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.064vQw
+== treehouse leased slot: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.064vQw/pool/.treehouse/firstmate-e6f2df/1/firstmate
+
+base  fm/fm-retired-home-leaves-records  (repository default)
+1     leased       /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.064vQw/pool/.treehouse/firstmate-e6f2df/1/firstmate  (detached)
+Note: switching to 'e2b866eceb71653a92aa0f35f846da0ff300aa85'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+== seeded home, ignored paths before retirement:
+!! .env
+!! .fm-secondmate-home
+!! .fm-secondmate-parent
+!! config/
+!! data/
+!! projects/
+!! state/
+== running: fm-teardown.sh sm-lab1 --force
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.064vQw/home
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  watcher supervision needs Stop-owned automatic recovery; inspect the hook registration and startup status before ending the turn.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌳 Worktree returned to pool.
+teardown sm-lab1 complete (window firstmate:fm-sm-lab1, worktree /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.064vQw/pool/.treehouse/firstmate-e6f2df/1/firstmate)
+== teardown exit: 0
+== slot after teardown:
+.agents
+.claude
+.codex
+.cursor
+.env
+.fm-secondmate-home
+.fm-secondmate-parent
+.git
+.gitattributes
+.github
+.gitignore
+.greptile
+.grok
+.no-mistakes.yaml
+.omp
+.opencode
+.pi
+.tasks.toml
+AGENTS.md
+CLAUDE.md
+CONTRIBUTING.md
+GROK_BOT.md
+LICENSE
+README.md
+VISION.md
+assets
+bin
+config
+data
+docs
+projects
+skills
+state
+tests
+-- ignored/untracked left in slot:
+!! .env
+!! .fm-secondmate-home
+!! .fm-secondmate-parent
+!! config/
+!! data/
+!! projects/
+!! state/
+== treehouse status after:
+
+base  fm/fm-retired-home-leaves-records  (repository default)
+1     available    /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.064vQw/pool/.treehouse/firstmate-e6f2df/1/firstmate  (detached)
+== parent archive ($FM_HOME/data/retired-homes):
+== task meta still present? no
+== lab removed
