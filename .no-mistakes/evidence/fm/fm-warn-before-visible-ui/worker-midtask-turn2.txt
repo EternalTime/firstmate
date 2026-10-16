@@ -1,0 +1,5 @@
+Both steps are done. I ran `open index.html`, waited 3 seconds, then closed Chrome's front window with `osascript`, and that command returned exit code 0. I didn't look at what the page showed, so I have no visual verdict.
+
+The line count came after the window closed. The repo holds one file besides `.git`, `index.html`, and `wc -l` gives it 1 line.
+
+The report is at `/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.fFyUhV/data/scout-y/report.md`. It says nothing needs to ship and no decisions are waiting on the captain. The captain-hold completion check passed with no open calls, and I appended the `done` line to the status file.

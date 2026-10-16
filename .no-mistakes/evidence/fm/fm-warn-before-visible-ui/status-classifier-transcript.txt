@@ -1,0 +1,25 @@
+1) worker progress
+  last line : working [at=1700000000]: building the app
+  captain-relevant (wakes firstmate): no
+  prefix: recognized
+  open decisions: []
+2) worker announces before opening the simulator (per brief rule 8)
+  last line : needs-decision [at=1700000100] [key=screen-ios-sim]: about to open the iOS Simulator on the captain's screen for a smoke test; hands off until released
+  captain-relevant (wakes firstmate): yes
+  prefix: recognized
+  open decisions: [screen-ios-sim	needs-decision	about to open the iOS Simulator on the captain's screen for a smoke test; hands off until released]
+3) firstmate answers
+  last line : resolved [at=1700000200] [key=screen-ios-sim]: captain warned, go ahead
+  captain-relevant (wakes firstmate): no
+  prefix: recognized
+  open decisions: []
+4) worker releases the surface mid-task, non-blocking note
+  last line : note [at=1700000500]: iOS Simulator closed
+  captain-relevant (wakes firstmate): no
+  prefix: recognized
+  open decisions: []
+5) worker finishes
+  last line : done [at=1700000900]: smoke test passed; iOS Simulator closed
+  captain-relevant (wakes firstmate): yes
+  prefix: recognized
+  open decisions: []

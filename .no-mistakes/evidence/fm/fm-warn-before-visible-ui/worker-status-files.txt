@@ -1,0 +1,15 @@
+== scout-x
+needs-decision [at=1792169715] [key=screen-browser-index]: about to open the default browser window showing index.html on the captain's screen to visually check the heading (no long step yet); hands off until released
+resolved [at=1792169725] [key=screen-browser-index]: captain warned; go ahead
+done [at=1792169762]: index.html opened in Chrome via open (h1 'Alpha Home' per source); screenshot not possible so render unverified by eye; window left open and the captain's to close
+== scout-y
+needs-decision [at=1792169792] [key=screen-chrome-index]: about to open index.html in a visible Chrome window on the captain's screen (then close it with osascript) for scout-y step A; hands off until released. No long step yet.
+resolved [at=1792169808] [key=screen-chrome-index]: captain warned; go ahead
+done [at=1792169841]: index.html opened and Chrome window closed (rc 0); repo has one file, index.html, 1 line; report written, no long step run
+== scout-z
+needs-decision [at=1792169866] [key=screen-chrome-index]: about to open alpha index.html in Chrome on the captain's screen for phase 1 visual look, then close it before the 75s soak; hands off until released. no long step yet
+resolved [at=1792169873] [key=screen-chrome-index]: captain warned; go ahead
+note [at=1792169889]: Chrome window closed, screen is the captain's again
+paused [at=1792169889]: running foreground sleep 75 soak, resumes when it exits; no long step yet
+resolved [at=1792169970] [key=screen-chrome-index]: window closed, soak finished
+done [at=1792169970]: all 3 phases done, Chrome window closed (not left open), sleep 75 took 75s, report written

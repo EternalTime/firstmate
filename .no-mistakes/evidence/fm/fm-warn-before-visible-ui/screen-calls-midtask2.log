@@ -1,0 +1,4 @@
+1792169857 chrome-devtools-axi 
+1792169880 open index.html
+1792169883 osascript -e tell application "Google Chrome" to get title of active tab of front window
+1792169886 osascript -e tell application "Google Chrome" to close front window
