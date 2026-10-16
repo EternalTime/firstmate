@@ -277,14 +277,17 @@
 #   configured host for a remote home. Skipped syncs warn and launch unchanged.
 #   Ship/scout spawns refuse to launch unless the resolved task path is a real
 #   git worktree root distinct from both the spawning project and its repository's
-#   primary checkout, including when the spawning project is a linked worktree.
+#   primary checkout, including when the spawning project is a linked worktree,
+#   and belongs to the spawning project's own clone: a pooled slot cut from
+#   another home's clone of the same repository is refused.
 #   On the backends that discover that path by reading the task pane's own cwd,
 #   the same isolation test screens every read: a pane still showing the project
 #   or the repository primary while `treehouse get` prepares the slot is waited
 #   out as a transient rather than adopted and then refused, so a home that is
-#   itself a linked worktree of the project repository still launches. A pane
-#   that never reaches an isolated worktree refuses at the end of that wait,
-#   naming the last path seen and why it was rejected.
+#   itself a linked worktree of the project repository still launches. A read
+#   of another clone's slot is never adopted either. A pane that never reaches
+#   an isolated worktree refuses at the end of that wait, naming the last path
+#   seen and why it was rejected.
 #   That placement is proven only at launch. Every ship or scout pane therefore
 #   also receives `export FM_TASK_ID=<task-id>` before the launch command, on
 #   the same channel as GOTMPDIR, and bin/fm-test-run.sh refuses to execute the
