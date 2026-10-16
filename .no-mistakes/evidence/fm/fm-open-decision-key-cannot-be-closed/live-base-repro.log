@@ -1,0 +1,42 @@
+=== status line as written by worker (t1) ===
+working: started
+needs-decision [at=1792169572]: question for review-asks here [key=review-asks]
+=== fm-wake-drain.sh (before answers) ===
+OPEN DECISIONS (still open, folded from the durable status logs - not just the latest line):
+t1 needs-decision: question for review-asks here [key=review-asks]
+t2 needs-decision: question for bmc-url here [key=bmc-url]
+t3 needs-decision: question for fold-ask here [key=fold-ask]
+t4 needs-decision: question for mfs-dispatch-hold here [key=mfs-dispatch-hold]
+OPEN DECISIONS: close one by answering it: bin/fm-send.sh <task> --resolve-key <key> '<answer>'
+=== $ bin/fm-send.sh t1 --resolve-key review-asks "go ahead" ===
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.GZMGhA
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+error: --resolve-key 'review-asks': no open decision or blocker with that key in /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.GZMGhA/state/t1.status, and no captain-held task 'review-asks' or 't1-decision-review-asks' still open (already closed or mistyped). Re-check the OPEN DECISIONS listing, then resend without that key or with the right one; nothing was sent.
+rc=1
+=== $ bin/fm-send.sh t2 --resolve-key bmc-url "go ahead" ===
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.GZMGhA
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+error: --resolve-key 'bmc-url': no open decision or blocker with that key in /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.GZMGhA/state/t2.status, and no captain-held task 'bmc-url' or 't2-decision-bmc-url' still open (already closed or mistyped). Re-check the OPEN DECISIONS listing, then resend without that key or with the right one; nothing was sent.
+rc=1
+=== $ bin/fm-send.sh t3 --resolve-key fold-ask "go ahead" ===
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.GZMGhA
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+error: --resolve-key 'fold-ask': no open decision or blocker with that key in /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.GZMGhA/state/t3.status, and no captain-held task 'fold-ask' or 't3-decision-fold-ask' still open (already closed or mistyped). Re-check the OPEN DECISIONS listing, then resend without that key or with the right one; nothing was sent.
+rc=1
+=== $ bin/fm-send.sh t4 --resolve-key mfs-dispatch-hold "go ahead" ===
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.GZMGhA
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+error: --resolve-key 'mfs-dispatch-hold': no open decision or blocker with that key in /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.GZMGhA/state/t4.status, and no captain-held task 'mfs-dispatch-hold' or 't4-decision-mfs-dispatch-hold' still open (already closed or mistyped). Re-check the OPEN DECISIONS listing, then resend without that key or with the right one; nothing was sent.
+rc=1
+=== t1.status after answer ===
+working: started
+needs-decision [at=1792169572]: question for review-asks here [key=review-asks]
+=== fm-wake-drain.sh (after answers) ===
+OPEN DECISIONS (still open, folded from the durable status logs - not just the latest line):
+t1 needs-decision: question for review-asks here [key=review-asks]
+t2 needs-decision: question for bmc-url here [key=bmc-url]
+t3 needs-decision: question for fold-ask here [key=fold-ask]
+t4 needs-decision: question for mfs-dispatch-hold here [key=mfs-dispatch-hold]
+OPEN DECISIONS: close one by answering it: bin/fm-send.sh <task> --resolve-key <key> '<answer>'
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+=== drain exit: 0 ===

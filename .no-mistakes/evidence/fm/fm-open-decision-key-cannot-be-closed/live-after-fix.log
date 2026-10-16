@@ -1,0 +1,33 @@
+=== status line as written by worker (t1) ===
+working: started
+needs-decision [at=1792169551]: question for review-asks here [key=review-asks]
+=== fm-wake-drain.sh (before answers) ===
+OPEN DECISIONS (still open, folded from the durable status logs - not just the latest line):
+t1 [key=review-asks] needs-decision: question for review-asks here
+t2 [key=bmc-url] needs-decision: question for bmc-url here
+t3 [key=fold-ask] needs-decision: question for fold-ask here
+t4 [key=mfs-dispatch-hold] needs-decision: question for mfs-dispatch-hold here
+OPEN DECISIONS: close one by answering it: bin/fm-send.sh <task> --resolve-key <key> '<answer>'
+=== $ bin/fm-send.sh t1 --resolve-key review-asks "go ahead" ===
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.F3eXIt
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+rc=0
+=== $ bin/fm-send.sh t2 --resolve-key bmc-url "go ahead" ===
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.F3eXIt
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+rc=0
+=== $ bin/fm-send.sh t3 --resolve-key fold-ask "go ahead" ===
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.F3eXIt
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+rc=0
+=== $ bin/fm-send.sh t4 --resolve-key mfs-dispatch-hold "go ahead" ===
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.F3eXIt
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+rc=0
+=== t1.status after answer ===
+working: started
+needs-decision [at=1792169551]: question for review-asks here [key=review-asks]
+resolved [key=review-asks] [at=1792169556]: answered: go ahead
+=== fm-wake-drain.sh (after answers) ===
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+=== drain exit: 0 ===

@@ -1,0 +1,53 @@
+### status files
+-- a.status
+needs-decision: should I rename [key=foo] to bar in the docs
+-- b.status
+needs-decision: pick one [key=bad slug]
+-- c.status
+needs-decision [key=api]: REST or RPC
+needs-decision: which colour [key=review-asks]
+-- d.status
+needs-decision: upgrade path question [key=fold-ask]
+### OLD (base) drain runs first, persisting a fold cursor under the old reading
+OPEN DECISIONS (still open, folded from the durable status logs - not just the latest line):
+a needs-decision: should I rename [key=foo] to bar in the docs
+b needs-decision: pick one [key=bad slug]
+c [key=api] needs-decision: REST or RPC
+c needs-decision: which colour [key=review-asks]
+d needs-decision: upgrade path question [key=fold-ask]
+OPEN DECISIONS: close one by answering it: bin/fm-send.sh <task> --resolve-key <key> '<answer>'
+### NEW drain on the same home (cursor from old version on disk)
+STATUS OUTCOME BACKSTOP (newest captain-facing task event has no covering branch outcome):
+b needs-decision: pick one [key=bad slug]
+OPEN DECISIONS (still open, folded from the durable status logs - not just the latest line):
+a needs-decision: should I rename [key=foo] to bar in the docs
+c [key=api] needs-decision: REST or RPC
+c [key=review-asks] needs-decision: which colour
+d [key=fold-ask] needs-decision: upgrade path question
+OPEN DECISIONS: close one by answering it: bin/fm-send.sh <task> --resolve-key <key> '<answer>'
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+### $ fm-send.sh a --resolve-key foo x
+error: --resolve-key 'foo': no open decision or blocker with that key in /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.T2txh1/state/a.status, and no captain-held task 'foo' or 'a-decision-foo' still open (already closed or mistyped). Re-check the OPEN DECISIONS listing, then resend without that key or with the right one; nothing was sent.
+rc=1
+### $ fm-send.sh b --resolve-key bad slug x
+error: --resolve-key 'bad slug' is not a valid decision key (allowed: A-Z a-z 0-9 . _ -)
+rc=1
+### $ fm-send.sh c --resolve-key reviewasks mistyped
+error: --resolve-key 'reviewasks': no open decision or blocker with that key in /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.T2txh1/state/c.status, and no captain-held task 'reviewasks' or 'c-decision-reviewasks' still open (already closed or mistyped). Re-check the OPEN DECISIONS listing, then resend without that key or with the right one; nothing was sent.
+rc=1
+-- c.inbox after mistyped key:
+ls: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.T2txh1/state/c.inbox: No such file or directory
+### $ fm-send.sh c --resolve-key review-asks teal
+rc=0
+### $ fm-send.sh d --resolve-key fold-ask yes
+rc=0
+### NEW drain after answers
+OPEN DECISIONS (still open, folded from the durable status logs - not just the latest line):
+a needs-decision: should I rename [key=foo] to bar in the docs
+c [key=api] needs-decision: REST or RPC
+OPEN DECISIONS: close one by answering it: bin/fm-send.sh <task> --resolve-key <key> '<answer>'
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+-- c.status
+needs-decision [key=api]: REST or RPC
+needs-decision: which colour [key=review-asks]
+resolved [key=review-asks] [at=1792169607]: answered: teal
