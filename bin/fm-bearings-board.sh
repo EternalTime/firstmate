@@ -32,7 +32,9 @@
 #              listening: <owner>            (only when a replacement was needed)
 #            Every dropped card is named on stderr as a `dropped-landed-card:`
 #            line, so a rebuild states what it removed instead of quietly
-#            shrinking Captain's Call.
+#            shrinking Captain's Call. A surviving decision card whose call
+#            `bin/fm-captain-hold.sh recheck due` reports due refuses the whole
+#            build before the existing board is touched, naming every such id.
 # path       Print the stable board path for this home.
 #
 # A LIVE SESSION IS PROVED, NEVER ASSUMED. `lavish-axi <file>` exits 0 even
@@ -337,6 +339,22 @@ effective_payload() {  # <data.json> <dest.json>
     ]' "$data" > "$dest" || return 1
 }
 
+# A held call is shown only after firstmate checked it against its project's
+# own documents and code; bin/fm-captain-hold.sh `recheck due` owns freshness.
+# Closed, absent, and unknown tasks are never due, matching the hygiene above.
+unrechecked_decision_keys() {  # <effective.json>; prints the due keys
+  local keys key out rc=0
+  local -a ids=()
+  keys=$(jq -r '.captains_call[]? | select(.type == "decision") | .key' "$1") || return 1
+  while IFS= read -r key; do
+    [ -z "$key" ] || ids+=("$key")
+  done <<< "$keys"
+  [ "${#ids[@]}" -gt 0 ] || return 0
+  out=$("$SCRIPT_DIR/fm-captain-hold.sh" recheck due "${ids[@]}" 2>/dev/null) || rc=$?
+  [ "$rc" -le 1 ] || return 1
+  printf '%s\n' "$out" | sed -n 's/^due: //p'
+}
+
 # The OWNER column bin/fm-procevent.sh already publishes: live, none,
 # orphaned, or uncertain. Empty means the source is not registered at all.
 source_owner() {  # <source-id>
@@ -358,7 +376,7 @@ await_source_owner() {  # <source-id>
 }
 
 command_build() {
-  local data=${1-} board json tmp sid extracted effective owner version pre_reopen_owner
+  local data=${1-} board json tmp sid extracted effective owner version pre_reopen_owner unrechecked
   [ "$#" -eq 1 ] || { usage >&2; exit 2; }
   command -v jq >/dev/null 2>&1 || fail "jq is required"
   [ -f "$data" ] || fail "board data does not exist: $data"
@@ -373,6 +391,14 @@ command_build() {
   if ! effective_payload "$data" "$effective"; then
     rm -f -- "$effective"
     fail "cannot reconcile the board payload against landed work"
+  fi
+  if ! unrechecked=$(unrechecked_decision_keys "$effective"); then
+    rm -f -- "$effective"
+    fail "cannot establish whether the Captain's Call decisions were rechecked"
+  fi
+  if [ -n "$unrechecked" ]; then
+    rm -f -- "$effective"
+    fail "refusing to show captain calls not yet rechecked against their project: $(printf '%s' "$unrechecked" | tr '\n' ' ')- recheck each one (captain-hold-lifecycle) and build again"
   fi
   json=$(jq -c . "$effective") || { rm -f -- "$effective"; fail "cannot compact the board data"; }
   rm -f -- "$effective"

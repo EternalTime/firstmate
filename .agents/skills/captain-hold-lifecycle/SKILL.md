@@ -2,7 +2,7 @@
 name: captain-hold-lifecycle
 description: >-
   Agent-only policy for completing investigations and visual reviews without losing unresolved captain calls, and for closing what the captain owns with his actual words.
-  Load before treating an investigation, scout report, structured review, or Lavish review as complete, before ending a visual review that exposed a captain decision, when recording or routing the captain's answer, and on any RECORD DIVERGENCE line the wake drain prints.
+  Load before treating an investigation, scout report, structured review, or Lavish review as complete, before ending a visual review that exposed a captain decision, before showing the captain any held call, when recording or routing the captain's answer, when cleanup refuses because a worker recorded words the captain told it directly, and on any RECORD DIVERGENCE line the wake drain prints.
 user-invocable: false
 metadata:
   internal: true
@@ -27,7 +27,7 @@ A completed investigation and an ended visual review use this same owner and com
 Run the command in the originating work's authoritative `FM_HOME`; secondmate-owned work registers in that secondmate home's backlog, and a question already held anywhere is never re-registered as a second row.
 Do not close a captain-held task merely because the originating investigation completed, its report was archived, its visual review ended, or its task was torn down.
 Holding the work item the question gates is safe for exactly that reason: cleanup keeps such a row open with the finished work's deliverable recorded and returns it to the queue, so it still reads as the captain's own call.
-Only `answer` with the captain's words or an evidence-backed `reconcile close` may resolve it.
+Only `answer` with the captain's words or an evidence-backed `reconcile close` or `recheck close` may resolve it.
 
 Never close anything the captain owns without recording what he actually said: `bin/fm-captain-hold.sh answer` writes his exact words into the task and closes a question-shaped call, while `--release` frees a captain-gated work item to proceed.
 A merge approval uses that existing release path because approval permits the merge to proceed; cleanup closes the work only after it lands and records what shipped.
@@ -50,6 +50,23 @@ A captain-held task closed outside this owner leaves no durable answer, so the c
 Resolved findings, recommendations that need no captain choice, and prose that merely sounds decision-like do not create held tasks.
 Bearings reads the resulting structured state and must never compensate by scraping historical reports, visual-review artifacts, terminal output, chat, or other prose.
 
+### Recheck before showing
+
+Answers reach a project through channels firstmate never reads: the captain answering a worker in its own terminal, and later work settling the question in the project's design log, documents, or code.
+So before any held call is shown to the captain - in Bearings, on the board, or in chat - check it against that project's current documents and code, its design log, and the backlog.
+`bin/fm-captain-hold.sh recheck due <task-id>...` names every call whose recheck is missing or stale; check each named call before showing it.
+A call already built, already decided, really an engineering choice firstmate owns, or duplicating another held call is not the captain's: close it with `recheck close <id> --evidence-file <path>` naming what settled it, or route the engineering choice to the work it gates.
+A call still genuinely the captain's stays held with `recheck note <id> --note-file <path>` recording what the check found.
+The board refuses to show a call whose recheck is due, and its reconcile choice remains the captain's own way to ask for a fresh look.
+
+### What the captain told a worker directly
+
+A worker appends the captain's exact words to `data/<task-id>/captain-direct.md` when he types to it directly, and cleanup refuses while that record holds words not yet routed.
+Before cleanup, route each instruction into firstmate's records: `answer` a held call he answered, add a changed ask to the brief's `## Captain's intent` under `AGENTS.md` section 7, record a standing preference where section 6 routes it, and file new work as its own task.
+Then attest with `bin/fm-captain-hold.sh direct routed <task-id> --note-file <path>` naming where each went.
+
+### Record divergence
+
 A captain call can be written down twice - as the keyed status decision the fold reads, and as the backlog task held for the captain - and those two records can disagree without either surface saying so.
 `bin/fm-captain-hold.sh diverged` reports that contradiction and the wake drain prints it as `RECORD DIVERGENCE`; it closes nothing, because a captain call closed wrongly leaves review entirely, which is worse than the noise.
 Read such a line as "these two records disagree", never as "the captain ruled and someone forgot to file it": a call can dissolve because its premise was false, or turn out to have been a question of fact rather than the captain's to answer.
@@ -62,8 +79,8 @@ The absence of a routed work item is not a divergence and the guard never requir
 2. Inventory only genuine unresolved choices that require the captain, and find the task each one gates.
 3. Hold that task - or create one captain-held task for the review's open questions - with a concise reason carrying the question and options.
 4. Run `complete` with the full captain-held inventory for that review pass.
-5. Relay the choices to the captain as decisions from Bearings' Captain's Call section under `AGENTS.md` section 9; do not use the word hold in captain chat.
-6. Close each call only through `answer` (or a channel that feeds `answers`), close a board-requested moot call through evidence-backed `reconcile close`, record a still-active reconciliation through `reconcile note`, use `--until` when the captain defers it, or confirm a channel already closed it.
+5. Recheck each call under "Recheck before showing", then relay the choices still his to the captain as decisions from Bearings' Captain's Call section under `AGENTS.md` section 9; do not use the word hold in captain chat.
+6. Close each call only through `answer` (or a channel that feeds `answers`), close a board-requested moot call through evidence-backed `reconcile close` and a call your own recheck found moot through `recheck close`, record a still-active reconciliation through `reconcile note`, use `--until` when the captain defers it, or confirm a channel already closed it.
 7. Confirm Bearings reflects the outcome: answered or reconciled-moot calls leave Captain's Call, released work resumes, active reconciliations remain held, and deferred calls sit in Charted Next with their date.
 
 `bin/fm-captain-hold.sh --help` owns command syntax, close modes, legacy-identity compatibility, completion attestation, retry behavior, and close ordering.

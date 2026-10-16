@@ -132,6 +132,9 @@
 # Every scaffold also carries the steering-inbox receive-and-ack section:
 # process state/<id>.inbox/*.msg in order and acknowledge each by moving it to
 # handled/ (record, doorbell, and ladder owned by bin/fm-task-inbox-lib.sh).
+# Crewmate and scout scaffolds add that a terminal message not starting with
+# `: Firstmate` is the captain speaking directly, whose exact words the worker
+# appends to data/<id>/captain-direct.md (bin/fm-captain-hold.sh `direct`).
 # Ship tasks include a project-memory section bounding crewmate edits to a
 # project's AGENTS.md/CLAUDE.md: only corrections of factually wrong
 # information, including wrong information the task itself introduced - never
@@ -460,6 +463,10 @@ INBOX_DIR=$(shell_quote "$STATE/$ID.inbox")
 # config/wait-no-turns (docs/configuration.md) adds the line that a waiting
 # worker does not poll the inbox: checkpoint checks happen during active work,
 # so waiting still spends no turns.
+# What the captain types straight into a worker's pane bypasses firstmate, so
+# the worker records it where bin/fm-teardown.sh refuses cleanup until
+# firstmate routes it (bin/fm-captain-hold.sh `direct` owns that test).
+DIRECT_FILE=$(shell_quote "$DATA/$ID/captain-direct.md")
 IFS= read -r -d '' INBOX_SECTION <<EOF || true
 # Firstmate instruction inbox
 Firstmate steers you through durable message files in $INBOX_DIR.
@@ -470,6 +477,11 @@ if [ -e "$CONFIG/wait-no-turns" ]; then
   INBOX_SECTION+="Do not poll or list the inbox while waiting; a waiting instruction rings."$'\n'
 fi
 INBOX_SECTION=${INBOX_SECTION%$'\n'}
+# Crewmate and scout briefs only: a secondmate charter owns its own unmarked
+# captain-message rule.
+CREW_INBOX_SECTION="$INBOX_SECTION
+Apart from your launch brief, every message firstmate puts in your terminal starts with \`: Firstmate\`.
+Any other message typed into your terminal is the captain speaking to you directly: it is authoritative, so follow it, and first append his exact words, unedited, under a \`## <UTC timestamp>\` heading to $DIRECT_FILE so firstmate can carry them into its own records."
 
 # How a crewmate or scout waits. Every model turn resends the whole context, so
 # a wait must cost no turns: a decision wait ends the turn, and an external
@@ -818,7 +830,7 @@ $SHARED_INFRA_RULE
 $SCREEN_RULE
 $INCREMENTAL_WRITE_RULE
 
-$WAIT_BLOCK$INBOX_SECTION
+$WAIT_BLOCK$CREW_INBOX_SECTION
 
 $GENERAL_GUIDELINES_SCOUT
 
@@ -903,7 +915,7 @@ $SHARED_INFRA_RULE
 $SCREEN_RULE
 $INCREMENTAL_WRITE_RULE
 
-$WAIT_BLOCK$INBOX_SECTION
+$WAIT_BLOCK$CREW_INBOX_SECTION
 
 $GENERAL_GUIDELINES_SHIP
 

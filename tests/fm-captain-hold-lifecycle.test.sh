@@ -4630,6 +4630,149 @@ SH
 }
 
 test_hold_reason_round_trips_awkward_characters
+test_recheck_gates_a_held_call_before_it_is_shown() {
+  local home show out rc
+  home=$(make_home recheck-before-showing)
+  tasks_in "$home" add sample-open-call "Captain call: which sample layout?" --repo sample >/dev/null
+  tasks_in "$home" add sample-built-call "Captain call: add the sample export?" --repo sample >/dev/null
+  FM_CAPTAIN_HOLD_NOW=2026-09-01T00:00:00Z run_captain "$home" hold sample-open-call \
+    --reason "which sample layout?" >/dev/null || fail "could not hold the open call"
+  FM_CAPTAIN_HOLD_NOW=2026-09-01T00:00:00Z run_captain "$home" hold sample-built-call \
+    --reason "add the sample export?" >/dev/null || fail "could not hold the built call"
+  printf 'Still open: the design log leaves the layout to the captain.\n' > "$home/note.txt"
+  printf 'The sample export already shipped in the project code on 2026-08-30.\n' > "$home/evidence.txt"
+
+  set +e
+  out=$(FM_CAPTAIN_HOLD_NOW=2026-09-01T01:00:00Z run_captain "$home" recheck due \
+    sample-open-call sample-built-call sample-missing-call)
+  rc=$?
+  set -e
+  [ "$rc" -eq 1 ] || fail "a never-rechecked call was not reported due (rc=$rc): $out"
+  assert_contains "$out" "due: sample-open-call" "a new hold was not due before its first recheck: $out"
+  assert_contains "$out" "due: sample-built-call" "a second new hold was not due: $out"
+  assert_contains "$out" "absent: sample-missing-call" "an absent task was not reported absent: $out"
+
+  FM_CAPTAIN_HOLD_NOW=2026-09-01T02:00:00Z run_captain "$home" recheck note sample-open-call \
+    --note-file "$home/note.txt" >/dev/null || fail "could not record the recheck note"
+  show=$(tasks_in "$home" show sample-open-call --full)
+  assert_contains "$show" "held: yes" "a recheck note released the call"
+  assert_contains "$show" "Captain hold rechecked: 2026-09-01T02:00:00Z" "the recheck left no dated note"
+  assert_contains "$show" "the design log leaves the layout" "the recheck finding was lost"
+  case "$show" in
+    *"Resolution recorded by"*) fail "a recheck note wrote a resolution record" ;;
+  esac
+
+  out=$(FM_CAPTAIN_HOLD_NOW=2026-09-01T10:00:00Z run_captain "$home" recheck due sample-open-call) \
+    || fail "a call rechecked eight hours ago was still due: $out"
+  assert_contains "$out" "fresh: sample-open-call rechecked=2026-09-01T02:00:00Z" \
+    "a fresh recheck was not reported with its stamp: $out"
+  set +e
+  out=$(FM_CAPTAIN_HOLD_NOW=2026-09-02T03:00:00Z run_captain "$home" recheck due sample-open-call)
+  rc=$?
+  set -e
+  [ "$rc" -eq 1 ] || fail "a recheck older than the window stayed fresh: $out"
+  out=$(FM_CAPTAIN_RECHECK_MAX_AGE_HOURS=48 FM_CAPTAIN_HOLD_NOW=2026-09-02T03:00:00Z \
+    run_captain "$home" recheck due sample-open-call) \
+    || fail "the configured recheck window was ignored: $out"
+  set +e
+  out=$(FM_CAPTAIN_RECHECK_MAX_AGE_HOURS=1.5 run_captain "$home" recheck due sample-open-call 2>&1)
+  rc=$?
+  set -e
+  [ "$rc" -eq 2 ] || fail "an invalid recheck window was not reported undecided (rc=$rc): $out"
+
+  printf 'Release the sample layout work for now.\n' > "$home/release.txt"
+  run_captain "$home" answer sample-open-call --decision-file "$home/release.txt" --release >/dev/null \
+    || fail "could not release the open call"
+  FM_CAPTAIN_HOLD_NOW=2026-09-01T03:00:00Z run_captain "$home" hold sample-open-call \
+    --reason "which sample layout, again?" >/dev/null || fail "could not re-hold the call"
+  set +e
+  out=$(FM_CAPTAIN_HOLD_NOW=2026-09-01T04:00:00Z run_captain "$home" recheck due sample-open-call)
+  rc=$?
+  set -e
+  [ "$rc" -eq 1 ] || fail "a recheck from before the re-hold made the new call fresh: $out"
+
+  request_reconciles "$home" board-src sample-built-call || fail "could not file the board request"
+  set +e
+  out=$(run_captain "$home" recheck close sample-built-call 2>&1)
+  rc=$?
+  set -e
+  [ "$rc" -ne 0 ] || fail "a recheck close was accepted with no evidence"
+  run_captain "$home" recheck close sample-built-call --evidence-file "$home/evidence.txt" >/dev/null \
+    || fail "could not close the built call on evidence"
+  show=$(tasks_in "$home" show sample-built-call --full)
+  assert_contains "$show" "state: done" "the built call did not close"
+  assert_contains "$show" "Resolution mode: reconciled" "the recheck close did not record how it closed"
+  assert_contains "$show" "already shipped in the project code" "the recheck evidence was lost"
+  case "$show" in
+    *"Captain decision:"*) fail "a recheck close was recorded as the captain's own words" ;;
+  esac
+  out=$(run_captain "$home" reconcile list)
+  assert_contains "$out" "reconcile-requests: 0" "the recheck close left the board request pending: $out"
+  out=$(run_captain "$home" recheck due sample-built-call) \
+    || fail "a closed call was reported due: $out"
+  assert_contains "$out" "closed: sample-built-call" "a closed call was not reported closed: $out"
+  pass "a held call is rechecked before it is shown, and a moot one closes on evidence"
+}
+
+test_direct_captain_words_route_before_cleanup() {
+  local home id out rc
+  home=$(make_home direct-words)
+  id=sample-direct-review
+  mkdir -p "$home/data/$id"
+  run_captain "$home" direct pending "$id" >/dev/null \
+    && fail "a task with no recorded words was pending"
+  tasks_in "$home" add "$id" "Investigate the sample direct path" --kind scout \
+    --repo sample --start >/dev/null || fail "could not create the investigation fixture"
+  write_origin_meta "$home" "$id"
+  printf 'done: report complete\n' > "$home/state/$id.status"
+  printf '# Sample direct path\n\nNothing waits on the captain.\n' > "$home/data/$id/report.md"
+  run_captain "$home" complete "$id" --none >/dev/null || fail "completion gate failed"
+  mkdir "$home/data/$id/captain-direct.md"
+  set +e
+  run_captain "$home" direct pending "$id" >/dev/null 2>&1
+  rc=$?
+  run_teardown "$home" "$id" > "$home/teardown.out" 2> "$home/teardown.err"
+  set -e
+  [ "$rc" -eq 2 ] || fail "an unreadable record was not reported undecided (rc=$rc)"
+  assert_grep "cannot tell whether task $id's worker recorded words" "$home/teardown.err" \
+    "cleanup did not refuse an undecidable captain-direct record"
+  rmdir "$home/data/$id/captain-direct.md"
+  printf '## 2026-09-01T00:00:00Z\nUse the sample layout from the design log.\n' \
+    > "$home/data/$id/captain-direct.md"
+
+  out=$(run_captain "$home" direct pending "$id") || fail "recorded words were not pending"
+  assert_contains "$out" "$home/data/$id/captain-direct.md" "pending did not name the record: $out"
+  set +e
+  run_teardown "$home" "$id" > "$home/teardown.out" 2> "$home/teardown.err"
+  rc=$?
+  set -e
+  [ "$rc" -ne 0 ] || fail "cleanup discarded unrouted captain words"
+  assert_grep "captain-direct.md" "$home/teardown.err" "the refusal did not name the record"
+  assert_present "$home/state/$id.meta" "a refused cleanup removed the task record"
+  set +e
+  PATH="$home/fakebin:$PATH" FM_ROOT_OVERRIDE="$ROOT" FM_HOME="$home" \
+    FM_STATE_OVERRIDE="$home/state" FM_DATA_OVERRIDE="$home/data" \
+    FM_CONFIG_OVERRIDE="$home/config" "$TEARDOWN" "$id" --force > /dev/null 2> "$home/forced.err"
+  rc=$?
+  set -e
+  [ "$rc" -ne 0 ] || fail "discard authority lifted the unrouted captain words"
+
+  printf 'Recorded the layout choice in the brief intent.\n' > "$home/routed.txt"
+  run_captain "$home" direct routed "$id" --note-file "$home/routed.txt" >/dev/null \
+    || fail "could not attest the routed words"
+  run_captain "$home" direct pending "$id" >/dev/null \
+    && fail "routed words were still pending"
+  printf '## 2026-09-01T01:00:00Z\nAlso keep the old export.\n' >> "$home/data/$id/captain-direct.md"
+  run_captain "$home" direct pending "$id" >/dev/null \
+    || fail "words appended after routing were not pending again"
+  run_captain "$home" direct routed "$id" --note-file "$home/routed.txt" >/dev/null \
+    || fail "could not attest the later words"
+  run_teardown "$home" "$id" > "$home/teardown.out" 2> "$home/teardown.err" \
+    || fail "cleanup refused routed captain words: $(cat "$home/teardown.err")"
+  assert_present "$home/data/$id/captain-direct.md" "cleanup removed the captain's recorded words"
+  pass "words the captain told a worker directly are routed before cleanup"
+}
+
 test_hold_origins_precede_backend_holds
 test_historical_self_inventory_has_workable_repair
 test_inventory_compares_backend_identities
@@ -4656,6 +4799,8 @@ test_reconcile_never_closes_through_the_keyed_answer_intake
 test_normal_answers_retire_pending_reconcile_requests
 test_reconcile_closes_with_evidence_or_keeps_the_call_open
 test_reconcile_outcomes_retry_partial_failures_once
+test_recheck_gates_a_held_call_before_it_is_shown
+test_direct_captain_words_route_before_cleanup
 test_unbound_source_closes_no_hold
 test_legacy_identities_keep_working
 test_board_answer_reaches_the_keyed_answer_intake

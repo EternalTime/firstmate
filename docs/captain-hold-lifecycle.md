@@ -14,6 +14,8 @@ This document records the deterministic mechanism, structured surfaces, compatib
 | Why does cleanup of finished work leave a captain call open? | [Cleanup never closes a captain call](#cleanup-never-closes-a-captain-call) |
 | How does a keyed answer from chat or a board reach the call? | [Answer-time resolution](#answer-time-resolution) |
 | How is a call closed when it stopped being a question? | [Reconcile](#reconcile-re-check-reality-never-a-blind-close) |
+| How is a call checked before the captain sees it? | [Recheck before showing](#recheck-before-showing) |
+| What happens to words the captain told a worker directly? | [Words the captain told a worker directly](#words-the-captain-told-a-worker-directly) |
 | Why did a decision card disappear from the board? | [Card hygiene](#card-hygiene-a-landed-subject-is-not-a-live-call) |
 | Where does a hold appear in snapshots and Bearings? | [Structured read surfaces](#structured-read-surfaces) |
 | What does a `RECORD DIVERGENCE` section mean? | [Record divergence](#record-divergence) |
@@ -42,6 +44,8 @@ It never reads report bodies, review artifacts, terminal output, or chat.
 | `bind`, `unbind`, `binding` | Record that a captured-answer source feeds the keyed-answer intake. | [Source bindings](#source-bindings) |
 | `reconcile-requests` | Internal intake that records a reconcile request from a board selection. | [Reconcile](#reconcile-re-check-reality-never-a-blind-close) |
 | `reconcile close`, `reconcile note`, `reconcile list` | Retire or list pending reconcile requests. | [Verifying and retiring a request](#verifying-and-retiring-a-request) |
+| `recheck due`, `recheck close`, `recheck note` | Firstmate's own dated check of a call before it is shown. | [Recheck before showing](#recheck-before-showing) |
+| `direct pending`, `direct routed` | Track whether a worker's record of the captain's direct words was routed. | [Words the captain told a worker directly](#words-the-captain-told-a-worker-directly) |
 | `diverged` | Read-only report of a call whose two records disagree. | [Record divergence](#record-divergence) |
 
 ### Creating a hold (`hold`)
@@ -184,7 +188,7 @@ The refusal names the record and the validation reason, so the captain can repai
 ### What `--force` does not lift
 
 `--force` does not lift the deferral, because it authorizes discarding unlanded work, never the captain's question.
-Only `answer` with the captain's words or evidence-backed `reconcile close` resolves the call, by either closing the question or releasing the gated work.
+Only `answer` with the captain's words or an evidence-backed `reconcile close` or `recheck close` resolves the call, by either closing the question or releasing the gated work.
 `bin/fm-backlog-transition-lib.sh` owns the transition and its record, and `bin/fm-captain-hold.sh --help` owns the predicate's contract.
 
 ## Answer-time resolution
@@ -308,7 +312,39 @@ A successful normal answer also retires any pending request, because an answered
 
 Every retirement is checked.
 If request removal fails after an answer, close, or note is already durable, the durable outcome stands, but the command fails and leaves the pending request visible for retry.
-No path here closes a captain call without either the captain's words through `answer` or the evidence through `reconcile close`.
+No path here closes a captain call without either the captain's words through `answer` or the evidence through `reconcile close` or `recheck close`.
+
+## Recheck before showing
+
+A board reconcile runs only when the captain asks for it, so it cannot keep a stale call from reaching him in the first place.
+`recheck` is the same verify-then-decide pair started by firstmate before the call is shown, so it needs no board request.
+
+- `recheck due <task-id>...` is read-only.
+  It prints `due:` for an open captain call whose newest dated check is missing, predates the hold-set stamp, or is older than `FM_CAPTAIN_RECHECK_MAX_AGE_HOURS` (default 24), and `fresh:` with that check's stamp otherwise.
+  Both `Captain hold rechecked:` and `Captain hold reconciled:` lines count as a dated check.
+  A closed, absent, or unreadable task prints `closed:`, `absent:`, or `unknown:` and is never due.
+  It exits 1 when any id is due, and 2 when it cannot decide, such as an invalid `FM_CAPTAIN_RECHECK_MAX_AGE_HOURS`.
+- `recheck close <task-id> --evidence-file <path>` is the moot outcome.
+  It writes the same `reconciled` resolution record as `reconcile close`, closes the task, and retires any pending board request.
+- `recheck note <task-id> --note-file <path>` is the still-active outcome.
+  It appends one dated `Captain hold rechecked:` note and leaves the hold, and any pending board request, in place.
+
+Re-holding released work writes a new hold-set stamp, so a check from an earlier lifecycle never makes the new call fresh.
+`bin/fm-bearings-board.sh build` asks `recheck due` for every decision card that survives hygiene and refuses the whole build, naming every due id, before the existing board is touched.
+It also refuses when `recheck due` cannot decide.
+
+## Words the captain told a worker directly
+
+Every crewmate and scout brief tells the worker that a terminal message not starting with `: Firstmate`, other than its launch brief, is the captain speaking directly, and that it appends his exact words under a timestamp heading to `data/<task-id>/captain-direct.md`.
+The worker's file is the record; no script parses its prose.
+
+- `direct pending <task-id>` exits 0 and prints the path while the file holds non-blank content whose digest differs from the routed attestation, 1 otherwise, and 2 when it cannot tell, such as when the record is not a readable regular file.
+- `direct routed <task-id> --note-file <path>` stores the file's current digest, a UTC stamp, and the note in `data/<task-id>/captain-direct.routed`.
+  Words the worker appends later change the digest, so the task becomes pending again.
+
+`bin/fm-teardown.sh` asks `direct pending` for every ship and scout task and refuses while it exits 0, or when the answer cannot be established.
+`--force` does not lift that refusal, because it authorizes discarding unlanded work, never the captain's words.
+A forced second-mate home discard is outside this guard: its child tasks are not asked, and a leased home keeps its `data/`, with any child's `captain-direct.md`, unrouted in the retired-homes archive.
 
 ## Card hygiene: a landed subject is not a live call
 
@@ -620,6 +656,20 @@ The board's half is pinned in `tests/fm-bearings-board.test.sh`:
 That suite drives its Lavish session through a protocol-shaped stub.
 `tests/fm-bearings-board-lavish-live-e2e.test.sh` is the default-on capability guard for the installed provider, and [`verification/process-event-sources.md`](verification/process-event-sources.md) owns the version-scoped evidence.
 [`verification/process-event-sources.md`](verification/process-event-sources.md) owns the process-event ownership and reclamation evidence exercised by `tests/fm-procevent.test.sh`.
+
+### Recheck and direct-words coverage
+
+`tests/fm-captain-hold-lifecycle.test.sh` proves:
+
+- A new hold is due, a recheck note makes it fresh, a check older than the window or one from before a re-hold is due again, and closed or absent tasks are never due.
+- An invalid recheck window makes `recheck due` exit 2 instead of reporting an answer.
+- A recheck close records the evidence under the reconciled label, closes the call, and retires a pending board request without needing one.
+- `direct pending` follows the worker's record through routing and a later append.
+- Cleanup refuses an unrouted record even with `--force`, and proceeds once it is routed.
+- A record that is not a regular file makes `direct pending` exit 2 and cleanup refuse because it cannot tell.
+
+`tests/fm-bearings-board.test.sh` proves a build with a due decision card refuses before the board is written.
+`tests/fm-brief.test.sh` proves crewmate and scout briefs carry the direct-words rule and a secondmate charter does not.
 
 ### Classifier and projection suites
 

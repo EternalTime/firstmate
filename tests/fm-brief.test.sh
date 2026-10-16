@@ -1889,6 +1889,35 @@ test_crewmate_scaffolds_require_incremental_writes() {
   pass "fm-brief.sh: every crewmate scaffold requires an early skeleton grown in incremental passes"
 }
 
+# Contract: what the captain types straight into a worker's terminal bypasses
+# firstmate, so crewmate and scout briefs tell the worker to record his exact
+# words where cleanup refuses until firstmate routes them; a secondmate charter
+# keeps its own unmarked-message rule.
+test_crewmate_briefs_record_direct_captain_words() {
+  local home id brief
+  home="$TMP_ROOT/direct-home"
+  mkdir -p "$home/data" "$home/config"
+  FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-direct-ship some-proj --mode no-mistakes >/dev/null 2>&1 \
+    || fail "fm-brief.sh ship scaffold exited non-zero"
+  FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-direct-scout some-proj --scout >/dev/null 2>&1 \
+    || fail "fm-brief.sh scout scaffold exited non-zero"
+  for id in brief-direct-ship brief-direct-scout; do
+    brief="$home/data/$id/brief.md"
+    assert_grep "every message firstmate puts in your terminal starts with \`: Firstmate\`" "$brief" \
+      "$id: the brief does not say how firstmate's own messages look"
+    assert_grep "is the captain speaking to you directly" "$brief" \
+      "$id: the brief does not name a direct captain message"
+    assert_grep "$home/data/$id/captain-direct.md" "$brief" \
+      "$id: the brief does not name the record for the captain's words"
+  done
+  FM_SECONDMATE_CHARTER='Supervise the alpha domain.' \
+    FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-direct-sm --secondmate --no-projects >/dev/null 2>&1 \
+    || fail "fm-brief.sh secondmate scaffold exited non-zero"
+  assert_no_grep "captain-direct.md" "$home/data/brief-direct-sm/brief.md" \
+    "secondmate charter must keep its own unmarked-message rule"
+  pass "fm-brief: crewmate and scout briefs record the captain's direct words"
+}
+
 test_script_parses
 test_no_heredoc_in_command_substitution
 test_help_includes_entire_header
@@ -1933,3 +1962,4 @@ test_branch_prefix_command_is_shell_safe
 test_crewmate_scaffolds_forbid_pool_administration
 test_crewmate_scaffolds_announce_visible_surfaces
 test_crewmate_scaffolds_require_incremental_writes
+test_crewmate_briefs_record_direct_captain_words

@@ -131,6 +131,14 @@ run_decisions() {  # <home> <command args...>
     "$ROOT/bin/fm-decision-hold.sh" "$@"
 }
 
+run_captain() {  # <home> <command args...>
+  local home=$1
+  shift
+  PATH="$home/fakebin:$PATH" FM_HOME="$home" \
+    FM_STATE_OVERRIDE="$home/state" FM_DATA_OVERRIDE="$home/data" \
+    "$ROOT/bin/fm-captain-hold.sh" "$@"
+}
+
 # A realistic payload: a cross-origin full-identity decision key past the old
 # 64-char cap, a merge card, a dispatchable charted row, and a string that
 # tries to terminate the data block early.
@@ -372,6 +380,9 @@ EOF
   run_decisions "$home" hold "$origin" "$key" \
     --title "Choose the order proof" --reason "captain choice pending" --repo sample >/dev/null \
     || fail "could not create the order-proof captain hold"
+  printf 'Still open: nothing in the project settles the order.\n' > "$home/recheck.txt"
+  run_captain "$home" recheck note "$hold" --note-file "$home/recheck.txt" >/dev/null \
+    || fail "could not recheck the order-proof captain hold"
 
   write_valid_payload "$data"
   jq --arg hold "$hold" '.captains_call[0].key = $hold' "$data" > "$data.tmp" \
@@ -769,6 +780,47 @@ test_build_refuses_a_nondecision_reconcile_value() {
   pass "build reserves reconcile across non-decision cards"
 }
 
+test_build_refuses_a_call_not_yet_rechecked() {
+  local home data board out rc
+  home=$(make_home recheck-cards)
+  data="$home/payload.json"
+  board="$home/.lavish/bearings-board.html"
+  fm_test_tasks_toml "$home/.tasks.toml"
+  cat > "$home/data/backlog.md" <<'EOF'
+## In flight
+
+## Queued
+
+## Done
+EOF
+  (cd "$home" && tasks-axi add sample-layout-call "Captain call: which layout?" --repo sample >/dev/null) \
+    || fail "could not create the held call fixture"
+  run_captain "$home" hold sample-layout-call --reason "which layout?" >/dev/null \
+    || fail "could not hold the call fixture"
+  write_valid_payload "$data"
+  jq '.captains_call = [{
+        "key":"sample-layout-call","type":"decision","repo":"sample",
+        "title":"Which layout?","options":[{"value":"a","label":"Layout A"}]
+      }]' "$data" > "$data.tmp" && mv "$data.tmp" "$data"
+
+  set +e
+  out=$(run_board "$home" build "$data" 2>&1)
+  rc=$?
+  set -e
+  [ "$rc" -ne 0 ] || fail "the board showed a call that was never rechecked"
+  assert_contains "$out" "not yet rechecked" "the refusal did not say why: $out"
+  assert_contains "$out" "sample-layout-call" "the refusal did not name the call: $out"
+  assert_absent "$board" "a refused build still wrote the board"
+
+  printf 'Still open: the design log leaves the layout to the captain.\n' > "$home/recheck.txt"
+  run_captain "$home" recheck note sample-layout-call --note-file "$home/recheck.txt" >/dev/null \
+    || fail "could not recheck the call"
+  out=$(run_board "$home" build "$data" 2>&1) || fail "a rechecked call still refused the build: $out"
+  extract_payload "$board" | jq -e '[.captains_call[].key] == ["sample-layout-call"]' >/dev/null \
+    || fail "the rechecked call is missing from the board"
+  pass "build refuses to show a held call until it is rechecked"
+}
+
 test_path_is_stable_and_home_scoped
 test_build_refuses_malformed_payloads_before_touching_the_board
 test_charted_kind_is_optional_and_accepts_both_values
@@ -787,3 +839,4 @@ test_build_fails_when_reconcile_cannot_establish_a_listener
 test_every_decision_card_carries_the_reconcile_choice
 test_build_refuses_a_payload_that_occupies_the_reconcile_value
 test_build_refuses_a_nondecision_reconcile_value
+test_build_refuses_a_call_not_yet_rechecked
