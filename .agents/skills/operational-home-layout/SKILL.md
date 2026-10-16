@@ -59,6 +59,8 @@ data/                personal fleet records; LOCAL, gitignored as a whole
   secondmates.md      local and remote secondmate routing table; firstmate-private, maintained by the secondmate seed helpers (section 6)
   <id>/brief.md      per-task crewmate brief, or per-secondmate charter brief when kind=secondmate
   <id>/report.md     scout task deliverable, written by the crewmate; survives teardown
+  <id>/captain-direct.md  the captain's exact words to a worker in its own terminal, appended by the worker; teardown refuses until firstmate routes them (captain-hold-lifecycle)
+  <id>/captain-direct.routed  firstmate's attestation of the routed record's digest, written only by bin/fm-captain-hold.sh direct routed
   pipeline-spend.jsonl  optional per-task no-mistakes pipeline spend, written only when config/pipeline-spend is present; bin/fm-pipeline-spend.sh owns the schema
 projects/            cloned repos; gitignored; read-only except under hard rule 1's concrete captain-approved project operation exception
 state/               runtime records and signals; gitignored

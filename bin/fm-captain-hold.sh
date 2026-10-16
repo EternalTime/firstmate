@@ -35,6 +35,11 @@
 #   fm-captain-hold.sh reconcile list
 #   fm-captain-hold.sh reconcile close <task-id> --evidence-file <path>
 #   fm-captain-hold.sh reconcile note <task-id> --note-file <path>
+#   fm-captain-hold.sh recheck due <task-id>...
+#   fm-captain-hold.sh recheck close <task-id> --evidence-file <path>
+#   fm-captain-hold.sh recheck note <task-id> --note-file <path>
+#   fm-captain-hold.sh direct pending <task-id>
+#   fm-captain-hold.sh direct routed <task-id> --note-file <path>
 #
 # `hold` places an existing task under an active captain hold, or creates the
 # task first when no work item exists to hold (--title required to create; the
@@ -115,6 +120,30 @@
 # `list` is the read-only enumeration.
 # docs/captain-hold-lifecycle.md owns the semantics.
 #
+# `recheck` is the same verify-then-decide pair started by firstmate itself
+# before a held call is shown to the captain, so it needs no board request.
+# `due` is the read-only predicate a presenter asks: it prints `due: <id>` for
+# an open captain call whose newest dated re-check (`Captain hold rechecked:`
+# or `Captain hold reconciled:` body line) is missing, predates the call's
+# hold-set stamp, or is older than FM_CAPTAIN_RECHECK_MAX_AGE_HOURS (default
+# 24), and `fresh: <id> rechecked=<stamp>` otherwise; a task that is not an
+# open captain call prints `closed:`, `absent:`, or `unknown:` and is never due.
+# It exits 1 when any id is due and 0 otherwise. `close` is reconcile close's
+# moot outcome without the request requirement, and also retires any pending
+# board request because the call is settled. `note` appends one dated
+# `Captain hold rechecked:` note, leaves the hold in place, and leaves any
+# pending board request for `reconcile note`.
+#
+# `direct` covers what the captain told a worker directly in its terminal.
+# The worker appends his exact words to data/<task-id>/captain-direct.md; that
+# file is the record, and this script never parses its prose. `pending` exits
+# 0 and prints the file path while the file holds words that were not yet
+# routed into firstmate's records, and 1 otherwise. `routed` attests that
+# firstmate routed the file's current content, storing its digest and the
+# supplied note in data/<task-id>/captain-direct.routed; words the worker
+# appends later make the task pending again. bin/fm-teardown.sh refuses while
+# a task is pending.
+#
 # A channel's ONLY job is to turn whatever it received into those keyed lines
 # and pipe them here. It must never map keys to tasks, build decision records,
 # choose a close mode beyond what its card declared, or close anything itself.
@@ -184,7 +213,8 @@
 # backlog close and, on 0, returns the row to Queued with its deliverable
 # recorded instead (bin/fm-backlog-transition-lib.sh owns that transition), so
 # holding the very work item a question gates is safe; only `answer` with the
-# captain's words or evidence-backed `reconcile close` closes the call.
+# captain's words or evidence-backed `reconcile close` or `recheck close`
+# closes the call.
 # bin/fm-watch.sh asks it when an ordinary
 # crew task reaches a due stale alarm - its open backlog hold need not appear in
 # the task's last status line - and on a 0 bounds repeated alarms from new pane
@@ -1607,8 +1637,14 @@ reconcile_list() {
 
 # The moot outcome. The evidence is what closes the call, and the `reconciled`
 # resolution mode is what keeps the record from claiming the captain answered.
-reconcile_close() {
-  local id=${1:-} evidence_file='' show state hold_kind body occurrence recorded_mode
+# A board reconcile requires the captain's pending request; a pre-escalation
+# recheck does not.
+reconcile_close() { evidence_close 1 "$@"; }
+
+evidence_close() {  # <require-request-0-or-1> <task-id> --evidence-file <path>
+  local require_request=$1 id evidence_file='' show state hold_kind body occurrence recorded_mode
+  shift
+  id=${1:-}
   [ "$#" -ge 1 ] || { usage >&2; exit 2; }
   shift
   while [ "$#" -gt 0 ]; do
@@ -1622,8 +1658,10 @@ reconcile_close() {
   [ -n "$evidence_file" ] || fail "--evidence-file is required; a moot call closes on evidence, never on assertion"
   load_decision "$evidence_file"
   acquire_task_control_lock "$id"
-  reconcile_request_read "$id" \
-    || fail "task $id has no pending board-created reconcile request"
+  if [ "$require_request" = 1 ]; then
+    reconcile_request_read "$id" \
+      || fail "task $id has no pending board-created reconcile request"
+  fi
   require_tasks_axi
   task_show_or_fail "$id" "captain-held task $id is absent from this home's configured backlog (data directory $DATA)"
   state=$(show_field "$show" state)
@@ -1727,6 +1765,199 @@ reconcile_note() {
     || fail "could not retire the applied reconcile request for $id"
   command_open "$id" || fail "recording the reconcile note released captain-held task $id"
   printf 'still-open: %s\n' "$id"
+}
+
+# --- recheck: firstmate verifies a held call before showing it -------------
+#
+# The policy - check the call against the project's own documents and code
+# before the captain ever sees it - is owned by
+# .agents/skills/captain-hold-lifecycle/SKILL.md. This section owns the dated
+# record of that check and the freshness predicate presenters ask.
+
+RECHECK_MAX_AGE_HOURS=${FM_CAPTAIN_RECHECK_MAX_AGE_HOURS:-24}
+
+command_recheck() {
+  local action=${1:-}
+  [ "$#" -ge 1 ] || { usage >&2; exit 2; }
+  shift
+  case "$action" in
+    due)   recheck_due "$@" ;;
+    close) evidence_close 0 "$@" ;;
+    note)  recheck_note "$@" ;;
+    *) usage >&2; exit 2 ;;
+  esac
+}
+
+iso_epoch() {  # <YYYY-MM-DD[THH:MM:SSZ]>
+  local ts=$1
+  case "$ts" in
+    *T*) ;;
+    *) ts="${ts}T00:00:00Z" ;;
+  esac
+  jq -nr --arg t "$ts" '$t | fromdateiso8601' 2>/dev/null
+}
+
+# The newest dated re-check in a decoded body: a pre-escalation recheck or a
+# board reconcile note, whichever is later.
+body_latest_recheck() {  # <decoded-task-body>
+  printf '%s\n' "$1" \
+    | sed -En 's/^Captain hold re(checked|conciled): ([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)$/\2/p' \
+    | LC_ALL=C sort | tail -1
+}
+
+recheck_due() {
+  local id rc show body hold_set latest now_epoch latest_epoch due_count=0
+  [ "$#" -ge 1 ] || { usage >&2; exit 2; }
+  case "$RECHECK_MAX_AGE_HOURS" in
+    ''|*[!0-9]*) fail "FM_CAPTAIN_RECHECK_MAX_AGE_HOURS must be a whole number of hours" ;;
+  esac
+  command -v jq >/dev/null 2>&1 || fail "jq is required to date a recheck"
+  now_epoch=$(iso_epoch "${FM_CAPTAIN_HOLD_NOW:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}") \
+    && [ -n "$now_epoch" ] || fail "cannot read the current time"
+  for id in "$@"; do
+    case "$id" in
+      ''|*[!A-Za-z0-9._-]*) printf 'unknown: %s\n' "$id"; continue ;;
+    esac
+    rc=0
+    ( command_open "$id" --distinguish-absent ) 2>/dev/null || rc=$?
+    case "$rc" in
+      0) ;;
+      1) printf 'closed: %s\n' "$id"; continue ;;
+      3) printf 'absent: %s\n' "$id"; continue ;;
+      *) printf 'unknown: %s\n' "$id"; continue ;;
+    esac
+    if ! task_show "$id"; then
+      printf 'unknown: %s\n' "$id"
+      continue
+    fi
+    show=$TASK_SHOW_OUTPUT
+    if ! body=$(decode_shown_value "$(show_field "$show" body)"); then
+      printf 'unknown: %s\n' "$id"
+      continue
+    fi
+    hold_set=$(body_hold_set_timestamp "$body")
+    latest=$(body_latest_recheck "$body")
+    latest_epoch=''
+    [ -z "$latest" ] || latest_epoch=$(iso_epoch "$latest")
+    if [ -z "$latest_epoch" ] \
+      || { [ -n "$hold_set" ] && [[ "$latest" < "$hold_set" ]]; } \
+      || [ $((now_epoch - latest_epoch)) -gt $((RECHECK_MAX_AGE_HOURS * 3600)) ]; then
+      printf 'due: %s\n' "$id"
+      due_count=$((due_count + 1))
+    else
+      printf 'fresh: %s rechecked=%s\n' "$id" "$latest"
+    fi
+  done
+  [ "$due_count" -eq 0 ]
+}
+
+# The still-active outcome of a pre-escalation recheck. The hold survives and
+# the call stays the captain's, now carrying what the check found.
+recheck_note() {
+  local id=${1:-} note_file='' note show body stamp tmp
+  [ "$#" -ge 1 ] || { usage >&2; exit 2; }
+  shift
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --note-file) shift; note_file=${1:-} ;;
+      *) usage >&2; exit 2 ;;
+    esac
+    shift
+  done
+  validate_slug task-id "$id"
+  [ -n "$note_file" ] || fail "--note-file is required; a recheck records what it found"
+  [ -f "$note_file" ] || fail "note file does not exist: $note_file"
+  note=$(cat "$note_file")
+  [ -n "$note" ] || fail "note file must not be empty"
+  [ "$(printf '%s' "$note" | LC_ALL=C wc -c | tr -d ' ')" -le 8192 ] \
+    || fail "note file exceeds 8192 bytes"
+  acquire_task_control_lock "$id"
+  require_tasks_axi
+  command_open "$id" \
+    || fail "task $id is not an open captain call; there is nothing to recheck"
+  task_show_or_fail "$id" "captain-held task $id is absent from this home's configured backlog (data directory $DATA)"
+  body=$(decode_shown_value "$(show_field "$show" body)") \
+    || fail "could not decode the existing body for $id"
+  stamp=${FM_CAPTAIN_HOLD_NOW:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}
+  tmp=$(umask 077; mktemp "${TMPDIR:-/tmp}/fm-captain-hold-recheck.XXXXXX") \
+    || fail "cannot stage the recheck note"
+  if ! printf '%s\n\nCaptain hold rechecked: %s\n%s\n' "$body" "$stamp" "$note" > "$tmp"; then
+    rm -f -- "$tmp"
+    fail "cannot stage the recheck note for $id"
+  fi
+  if ! tasks_axi update "$id" --body-file "$tmp" --archive-body >/dev/null; then
+    rm -f -- "$tmp"
+    fail "could not record the recheck note on $id"
+  fi
+  rm -f -- "$tmp"
+  command_open "$id" || fail "recording the recheck note released captain-held task $id"
+  printf 'still-open: %s\n' "$id"
+}
+
+# --- direct: what the captain told a worker in its own terminal -------------
+
+direct_paths() {  # <task-id>; sets DIRECT_FILE and DIRECT_ROUTED
+  validate_slug task-id "$1"
+  DIRECT_FILE="$DATA/$1/captain-direct.md"
+  DIRECT_ROUTED="$DATA/$1/captain-direct.routed"
+}
+
+direct_digest() {  # <file>
+  sha256_text "$(cat "$1")"
+}
+
+direct_routed_digest() {
+  [ -f "$DIRECT_ROUTED" ] || return 0
+  sed -n 's/^digest=//p' "$DIRECT_ROUTED" | head -1
+}
+
+command_direct() {
+  local action=${1:-} id note_file='' note digest tmp
+  [ "$#" -ge 2 ] || { usage >&2; exit 2; }
+  id=$2
+  shift 2
+  direct_paths "$id"
+  case "$action" in
+    pending)
+      [ "$#" -eq 0 ] || { usage >&2; exit 2; }
+      [ -e "$DIRECT_FILE" ] || [ -L "$DIRECT_FILE" ] || return 1
+      [ -f "$DIRECT_FILE" ] && [ ! -L "$DIRECT_FILE" ] \
+        || fail "captain-direct record is not a regular file: $DIRECT_FILE"
+      [ -n "$(tr -d '[:space:]' < "$DIRECT_FILE")" ] || return 1
+      [ "$(direct_digest "$DIRECT_FILE")" != "$(direct_routed_digest)" ] || return 1
+      printf '%s\n' "$DIRECT_FILE"
+      return 0
+      ;;
+    routed)
+      while [ "$#" -gt 0 ]; do
+        case "$1" in
+          --note-file) shift; note_file=${1:-} ;;
+          *) usage >&2; exit 2 ;;
+        esac
+        shift
+      done
+      [ -n "$note_file" ] || fail "--note-file is required; say where the captain's words went"
+      [ -f "$note_file" ] || fail "note file does not exist: $note_file"
+      note=$(cat "$note_file")
+      [ -n "$note" ] || fail "note file must not be empty"
+      [ -f "$DIRECT_FILE" ] && [ ! -L "$DIRECT_FILE" ] \
+        || fail "no captain-direct record to route for $id: $DIRECT_FILE"
+      digest=$(direct_digest "$DIRECT_FILE")
+      tmp=$(umask 077; mktemp "$DATA/$id/.captain-direct.routed.XXXXXX") \
+        || fail "cannot stage the routed record for $id"
+      if {
+        printf 'digest=%s\n' "$digest"
+        printf 'routed=%s\n' "${FM_CAPTAIN_HOLD_NOW:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
+        printf '%s\n' "$note"
+      } > "$tmp" && mv -f -- "$tmp" "$DIRECT_ROUTED"; then
+        printf 'routed: %s\n' "$id"
+        return 0
+      fi
+      rm -f -- "$tmp"
+      fail "could not record the routed captain-direct words for $id"
+      ;;
+    *) usage >&2; exit 2 ;;
+  esac
 }
 
 command_complete() {
@@ -2051,6 +2282,8 @@ case "${1:-}" in
   open) shift; command_open "$@" ;;
   diverged) shift; command_diverged "$@" ;;
   reconcile) shift; command_reconcile "$@" ;;
+  recheck) shift; command_recheck "$@" ;;
+  direct) shift; command_direct "$@" ;;
   -h|--help) usage ;;
   *) usage >&2; exit 2 ;;
 esac

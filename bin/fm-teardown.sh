@@ -76,6 +76,8 @@
 # declared scratch and the report at data/<task-id>/report.md is the work
 # product. Teardown proceeds only once the report exists and the shared
 # unresolved-decision completion gate verifies its captain-held inventory.
+# Ship and scout cleanup also refuses, even under --force, while the worker's
+# record of what the captain told it directly is not yet routed.
 # A scratch copy (kind=scout) and a --force run discard untracked content.
 # Treehouse's return resets with `git clean -fd`, which never deletes a nested
 # git repository, so the pool slot stays dirty and later checkouts skip it.
@@ -3541,6 +3543,29 @@ if [ "$KIND" = scout ] && [ "$FORCE" != "--force" ]; then
     echo "Inventory its report and any visual review through bin/fm-captain-hold.sh before teardown." >&2
     exit 1
   fi
+fi
+
+# What the captain told this worker directly in its terminal reaches firstmate
+# only through the worker's data/<id>/captain-direct.md record, so cleanup is
+# the last point where it can be routed into firstmate's own records.
+# bin/fm-captain-hold.sh `direct` owns the pending test; --force authorizes
+# discarding unlanded work, never the captain's words, so it does not lift this.
+if [ "$KIND" != secondmate ]; then
+  DIRECT_RC=0
+  FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" FM_DATA_OVERRIDE="$DATA" \
+    FM_CONFIG_OVERRIDE="$CONFIG" "$SCRIPT_DIR/fm-captain-hold.sh" direct pending "$ID" >/dev/null || DIRECT_RC=$?
+  case "$DIRECT_RC" in
+    1) ;;
+    0)
+      echo "REFUSED: the captain spoke to task $ID's worker directly, and $DATA/$ID/captain-direct.md is not yet routed into firstmate's records." >&2
+      echo "Route his words (captain-hold-lifecycle), then run bin/fm-captain-hold.sh direct routed $ID --note-file <path>." >&2
+      exit 1
+      ;;
+    *)
+      echo "REFUSED: cannot tell whether task $ID's worker recorded words from the captain ($DATA/$ID/captain-direct.md)." >&2
+      exit 1
+      ;;
+  esac
 fi
 
 # A public commitment is not kept until its final reply lands in the ORIGINAL
