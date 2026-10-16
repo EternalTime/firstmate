@@ -1815,15 +1815,12 @@ test_crewmate_scaffolds_announce_visible_surfaces() {
 
   # The opening announcement must reach firstmate as a captain-relevant event,
   # not be absorbed as routine progress, or the window appears unannounced.
-  (
-    # shellcheck source=bin/fm-classify-lib.sh
-    # shellcheck disable=SC1091
-    . "$ROOT/bin/fm-classify-lib.sh"
-    status_is_captain_relevant 'needs-decision [at=1700000000] [key=screen-app-window]: about to open the app window on the captain'"'"'s screen for a smoke test; hands off until released' \
-      || fail "the screen announcement shape is not captain-relevant"
-    ! status_prefix_unrecognized 'note [at=1700000000]: the app window left open and the captain'"'"'s to use' \
-      || fail "the screen release shape is not a recognized status line"
-  ) || exit 1
+  bash -c '. "$1"; status_is_captain_relevant "$2"' _ "$ROOT/bin/fm-classify-lib.sh" \
+    'needs-decision [at=1700000000] [key=screen-app-window]: about to open the app window on the captain'"'"'s screen for a smoke test; hands off until released' \
+    || fail "the screen announcement shape is not captain-relevant"
+  ! bash -c '. "$1"; status_prefix_unrecognized "$2"' _ "$ROOT/bin/fm-classify-lib.sh" \
+    'note [at=1700000000]: the app window left open and the captain'"'"'s to use' \
+    || fail "the screen release shape is not a recognized status line"
 
   FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-screen-scout alpha --scout >/dev/null 2>&1 \
     || fail "fm-brief.sh --scout exited non-zero"
