@@ -3550,6 +3550,8 @@ fi
 # the last point where it can be routed into firstmate's own records.
 # bin/fm-captain-hold.sh `direct` owns the pending test; --force authorizes
 # discarding unlanded work, never the captain's words, so it does not lift this.
+# A forced second-mate home discard is outside this guard: its children are
+# not asked, and a leased home's data/ is kept unrouted in data/retired-homes/.
 if [ "$KIND" != secondmate ]; then
   DIRECT_RC=0
   FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" FM_DATA_OVERRIDE="$DATA" \

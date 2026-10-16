@@ -128,21 +128,21 @@
 # hold-set stamp, or is older than FM_CAPTAIN_RECHECK_MAX_AGE_HOURS (default
 # 24), and `fresh: <id> rechecked=<stamp>` otherwise; a task that is not an
 # open captain call prints `closed:`, `absent:`, or `unknown:` and is never due.
-# It exits 1 when any id is due and 0 otherwise. `close` is reconcile close's
-# moot outcome without the request requirement, and also retires any pending
-# board request because the call is settled. `note` appends one dated
-# `Captain hold rechecked:` note, leaves the hold in place, and leaves any
-# pending board request for `reconcile note`.
+# It exits 1 when any id is due, 0 otherwise, and 2 when it cannot decide.
+# `close` is reconcile close's moot outcome without the request requirement,
+# and also retires any pending board request because the call is settled.
+# `note` appends one dated `Captain hold rechecked:` note, leaves the hold in
+# place, and leaves any pending board request for `reconcile note`.
 #
 # `direct` covers what the captain told a worker directly in its terminal.
 # The worker appends his exact words to data/<task-id>/captain-direct.md; that
 # file is the record, and this script never parses its prose. `pending` exits
 # 0 and prints the file path while the file holds words that were not yet
-# routed into firstmate's records, and 1 otherwise. `routed` attests that
-# firstmate routed the file's current content, storing its digest and the
-# supplied note in data/<task-id>/captain-direct.routed; words the worker
-# appends later make the task pending again. bin/fm-teardown.sh refuses while
-# a task is pending.
+# routed into firstmate's records, 1 otherwise, and 2 when it cannot tell.
+# `routed` attests that firstmate routed the file's current content, storing
+# its digest and the supplied note in data/<task-id>/captain-direct.routed;
+# words the worker appends later make the task pending again.
+# bin/fm-teardown.sh refuses while a task is pending or cannot be told.
 #
 # A channel's ONLY job is to turn whatever it received into those keyed lines
 # and pipe them here. It must never map keys to tasks, build decision records,
@@ -307,6 +307,13 @@ usage() {
 fail() {
   printf 'fm-captain-hold: %s\n' "$*" >&2
   exit 1
+}
+
+# A predicate whose exit 1 is itself an answer reports its own errors here, so a
+# caller never reads "could not decide" as that answer.
+fail_undecided() {
+  printf 'fm-captain-hold: %s\n' "$*" >&2
+  exit 2
 }
 
 validate_slug() {  # <label> <value>
@@ -1809,11 +1816,11 @@ recheck_due() {
   local id rc show body hold_set latest now_epoch latest_epoch due_count=0
   [ "$#" -ge 1 ] || { usage >&2; exit 2; }
   case "$RECHECK_MAX_AGE_HOURS" in
-    ''|*[!0-9]*) fail "FM_CAPTAIN_RECHECK_MAX_AGE_HOURS must be a whole number of hours" ;;
+    ''|*[!0-9]*) fail_undecided "FM_CAPTAIN_RECHECK_MAX_AGE_HOURS must be a whole number of hours" ;;
   esac
-  command -v jq >/dev/null 2>&1 || fail "jq is required to date a recheck"
+  command -v jq >/dev/null 2>&1 || fail_undecided "jq is required to date a recheck"
   now_epoch=$(iso_epoch "${FM_CAPTAIN_HOLD_NOW:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}") \
-    && [ -n "$now_epoch" ] || fail "cannot read the current time"
+    && [ -n "$now_epoch" ] || fail_undecided "cannot read the current time"
   for id in "$@"; do
     case "$id" in
       ''|*[!A-Za-z0-9._-]*) printf 'unknown: %s\n' "$id"; continue ;;
@@ -1912,7 +1919,7 @@ direct_routed_digest() {
 }
 
 command_direct() {
-  local action=${1:-} id note_file='' note digest tmp
+  local action=${1:-} id note_file='' note digest tmp words
   [ "$#" -ge 2 ] || { usage >&2; exit 2; }
   id=$2
   shift 2
@@ -1922,9 +1929,13 @@ command_direct() {
       [ "$#" -eq 0 ] || { usage >&2; exit 2; }
       [ -e "$DIRECT_FILE" ] || [ -L "$DIRECT_FILE" ] || return 1
       [ -f "$DIRECT_FILE" ] && [ ! -L "$DIRECT_FILE" ] \
-        || fail "captain-direct record is not a regular file: $DIRECT_FILE"
-      [ -n "$(tr -d '[:space:]' < "$DIRECT_FILE")" ] || return 1
-      [ "$(direct_digest "$DIRECT_FILE")" != "$(direct_routed_digest)" ] || return 1
+        || fail_undecided "captain-direct record is not a regular file: $DIRECT_FILE"
+      words=$(tr -d '[:space:]' < "$DIRECT_FILE") \
+        || fail_undecided "cannot read the captain-direct record: $DIRECT_FILE"
+      [ -n "$words" ] || return 1
+      digest=$(direct_digest "$DIRECT_FILE") && [ -n "$digest" ] \
+        || fail_undecided "cannot digest the captain-direct record: $DIRECT_FILE"
+      [ "$digest" != "$(direct_routed_digest)" ] || return 1
       printf '%s\n' "$DIRECT_FILE"
       return 0
       ;;

@@ -4674,6 +4674,11 @@ test_recheck_gates_a_held_call_before_it_is_shown() {
   out=$(FM_CAPTAIN_RECHECK_MAX_AGE_HOURS=48 FM_CAPTAIN_HOLD_NOW=2026-09-02T03:00:00Z \
     run_captain "$home" recheck due sample-open-call) \
     || fail "the configured recheck window was ignored: $out"
+  set +e
+  out=$(FM_CAPTAIN_RECHECK_MAX_AGE_HOURS=1.5 run_captain "$home" recheck due sample-open-call 2>&1)
+  rc=$?
+  set -e
+  [ "$rc" -eq 2 ] || fail "an invalid recheck window was not reported undecided (rc=$rc): $out"
 
   printf 'Release the sample layout work for now.\n' > "$home/release.txt"
   run_captain "$home" answer sample-open-call --decision-file "$home/release.txt" --release >/dev/null \
@@ -4722,6 +4727,16 @@ test_direct_captain_words_route_before_cleanup() {
   printf 'done: report complete\n' > "$home/state/$id.status"
   printf '# Sample direct path\n\nNothing waits on the captain.\n' > "$home/data/$id/report.md"
   run_captain "$home" complete "$id" --none >/dev/null || fail "completion gate failed"
+  mkdir "$home/data/$id/captain-direct.md"
+  set +e
+  run_captain "$home" direct pending "$id" >/dev/null 2>&1
+  rc=$?
+  run_teardown "$home" "$id" > "$home/teardown.out" 2> "$home/teardown.err"
+  set -e
+  [ "$rc" -eq 2 ] || fail "an unreadable record was not reported undecided (rc=$rc)"
+  assert_grep "cannot tell whether task $id's worker recorded words" "$home/teardown.err" \
+    "cleanup did not refuse an undecidable captain-direct record"
+  rmdir "$home/data/$id/captain-direct.md"
   printf '## 2026-09-01T00:00:00Z\nUse the sample layout from the design log.\n' \
     > "$home/data/$id/captain-direct.md"
 

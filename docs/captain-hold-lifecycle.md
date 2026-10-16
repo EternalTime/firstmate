@@ -323,7 +323,7 @@ A board reconcile runs only when the captain asks for it, so it cannot keep a st
   It prints `due:` for an open captain call whose newest dated check is missing, predates the hold-set stamp, or is older than `FM_CAPTAIN_RECHECK_MAX_AGE_HOURS` (default 24), and `fresh:` with that check's stamp otherwise.
   Both `Captain hold rechecked:` and `Captain hold reconciled:` lines count as a dated check.
   A closed, absent, or unreadable task prints `closed:`, `absent:`, or `unknown:` and is never due.
-  It exits 1 when any id is due.
+  It exits 1 when any id is due, and 2 when it cannot decide, such as an invalid `FM_CAPTAIN_RECHECK_MAX_AGE_HOURS`.
 - `recheck close <task-id> --evidence-file <path>` is the moot outcome.
   It writes the same `reconciled` resolution record as `reconcile close`, closes the task, and retires any pending board request.
 - `recheck note <task-id> --note-file <path>` is the still-active outcome.
@@ -337,12 +337,13 @@ Re-holding released work writes a new hold-set stamp, so a check from an earlier
 Every crewmate and scout brief tells the worker that a terminal message not starting with `: Firstmate`, other than its launch brief, is the captain speaking directly, and that it appends his exact words under a timestamp heading to `data/<task-id>/captain-direct.md`.
 The worker's file is the record; no script parses its prose.
 
-- `direct pending <task-id>` exits 0 and prints the path while the file holds non-blank content whose digest differs from the routed attestation, and 1 otherwise.
+- `direct pending <task-id>` exits 0 and prints the path while the file holds non-blank content whose digest differs from the routed attestation, 1 otherwise, and 2 when it cannot tell, such as when the record is not a readable regular file.
 - `direct routed <task-id> --note-file <path>` stores the file's current digest, a UTC stamp, and the note in `data/<task-id>/captain-direct.routed`.
   Words the worker appends later change the digest, so the task becomes pending again.
 
 `bin/fm-teardown.sh` asks `direct pending` for every ship and scout task and refuses while it exits 0, or when the answer cannot be established.
 `--force` does not lift that refusal, because it authorizes discarding unlanded work, never the captain's words.
+A forced second-mate home discard is outside this guard: its child tasks are not asked, and a leased home keeps its `data/`, with any child's `captain-direct.md`, unrouted in the retired-homes archive.
 
 ## Card hygiene: a landed subject is not a live call
 
