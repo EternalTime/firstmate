@@ -1700,12 +1700,12 @@ make_leased_secondmate_home() {
   root="$case_dir/fm-root"
   home="$case_dir/pool/3/firstmate"
   git clone -q "$case_dir/origin.git" "$root"
-  printf '%s\n' data/ state/ config/ projects/ .fm-secondmate-home .fm-secondmate-parent .env > "$root/.gitignore"
+  printf '%s\n' data/ state/ config/ projects/ scratch/ .fm-secondmate-home .fm-secondmate-parent .env > "$root/.gitignore"
   git -C "$root" add .gitignore
   git -C "$root" -c user.email=t@t -c user.name=t commit -q -m "ignore private records"
   mkdir -p "$case_dir/pool/3"
   git -C "$root" worktree add -q --detach "$home" HEAD
-  for name in data state config projects; do
+  for name in data state config projects scratch; do
     mkdir -p "$home/$name"
     printf '%s\n' "private $name" > "$home/$name/record.md"
   done
@@ -1739,10 +1739,13 @@ test_retired_leased_home_returns_without_its_private_records() {
   run_leased_home_teardown "$case_dir" --force > "$case_dir/stdout" 2> "$case_dir/stderr" || rc=$?
 
   expect_code 0 "$rc" "leased-home-private-records: retiring a leased home should succeed"
-  for name in data state config projects .fm-secondmate-home .fm-secondmate-parent .env; do
+  for name in data state config projects scratch .fm-secondmate-home .fm-secondmate-parent .env; do
     assert_absent "$home/$name" "leased-home-private-records: the returned slot still holds $name"
   done
   [ -f "$home/.gitignore" ] || fail "leased-home-private-records: the return removed the slot's tracked files"
+  [ -z "$(git -C "$home" status --porcelain --ignored)" ] \
+    || fail "leased-home-private-records: the returned slot holds more than its tracked files"
+
   archive=$(find "$case_dir/data/retired-homes" -mindepth 1 -maxdepth 1 -name 'task-x1-*' 2>/dev/null)
   [ "$(printf '%s\n' "$archive" | grep -c .)" -eq 1 ] \
     || fail "leased-home-private-records: expected one archive of the retired home, got: $archive"
@@ -1750,15 +1753,15 @@ test_retired_leased_home_returns_without_its_private_records() {
     task-x1-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]T[0-9][0-9][0-9][0-9][0-9][0-9]Z) ;;
     *) fail "leased-home-private-records: archive ${archive##*/} is not named <id>-<UTC timestamp>" ;;
   esac
-  for name in data state config projects; do
+  for name in data state config; do
     assert_grep "private $name" "$archive/files/$name/record.md" \
       "leased-home-private-records: the $name records were not kept in the archive"
   done
-  [ -d "$archive/files/projects/alpha/.git" ] || fail "leased-home-private-records: the project clone was not kept"
   assert_grep task-x1 "$archive/files/.fm-secondmate-home" "leased-home-private-records: the home marker was not kept"
+  assert_grep route=local "$archive/files/.fm-secondmate-parent" "leased-home-private-records: the parent marker was not kept"
   assert_grep SECRET=1 "$archive/files/.env" "leased-home-private-records: the ignored .env was not kept"
-  [ -z "$(find "$case_dir/pool" -name '.fm-retired-home.*')" ] \
-    || fail "leased-home-private-records: private records were left beside the slot"
+  assert_absent "$archive/files/projects" "leased-home-private-records: the project clones were kept in the archive"
+  assert_absent "$archive/files/scratch" "leased-home-private-records: a staged path that is not a home record was kept"
   assert_absent "$case_dir/state/task-x1.meta" "leased-home-private-records: task record was not removed"
   pass "a retired leased home goes back to the pool clean, with its private records kept in the parent archive"
 }
@@ -1778,7 +1781,7 @@ test_failed_leased_home_return_keeps_its_private_records() {
   [ "$rc" -ne 0 ] || fail "leased-home-failed-return: a failed return should fail the retirement"
   assert_grep "lease may still be held" "$case_dir/stderr" \
     "leased-home-failed-return: fixture did not reach the failed return"
-  for name in data state config projects; do
+  for name in data state config projects scratch; do
     assert_grep "private $name" "$home/$name/record.md" \
       "leased-home-failed-return: the $name records were not put back"
   done

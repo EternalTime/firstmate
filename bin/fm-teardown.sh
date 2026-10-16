@@ -2716,9 +2716,9 @@ EOF
 # A leased home goes back to the pool for an unrelated worker, but treehouse's
 # return leaves git-ignored paths in place, and every private record a home
 # holds (data/, state/, config/, projects/, the secondmate markers) is ignored.
-# Move them into this home's data/retired-homes/<id>-<UTC timestamp>/ before the
-# return, so the retired home's backlog, reports and learnings are kept, a failed
-# return can put them back, and a successful one hands back a clean slot.
+# Move them into the parent's (teardown caller's) data/retired-homes/<id>-<UTC
+# timestamp>/ before the return, so a failed return can put them back and a
+# successful one hands back a clean slot.
 # Prints the archive directory; its .manifest lists each moved path, NUL-separated,
 # and files/ holds the paths themselves.
 stage_firstmate_home_private_paths() {
@@ -2766,6 +2766,22 @@ restore_firstmate_home_private_paths() {
   rm -rf -- "$staging"
 }
 
+# After a successful return, keep only the retired home's own records
+# (data/, state/, config/, the secondmate markers and .env) in the archive.
+# Project clones are copies of their remotes, and retirement already refused
+# any home with work under way, so they and every other staged path go.
+prune_firstmate_home_private_archive() {
+  local staging=$1 entry
+  for entry in "$staging/files"/* "$staging/files"/.[!.]* "$staging/files"/..?*; do
+    [ -e "$entry" ] || [ -L "$entry" ] || continue
+    case "${entry##*/}" in
+      data|state|config|"$SUB_HOME_MARKER"|"$SUB_HOME_PARENT_MARKER"|.env) ;;
+      *) rm -rf -- "$entry" ;;
+    esac
+  done
+  rm -f -- "$staging/.manifest"
+}
+
 remove_firstmate_home() {
   local home=$1 label=$2 expected_id=${3:-} abs_home_path process_event_backup private_staging
   [ -n "$home" ] || return 0
@@ -2796,6 +2812,7 @@ remove_firstmate_home() {
       restore_firstmate_home_process_events "$abs_home_path" "$label" "$process_event_backup" || return $?
       return 1
     }
+    prune_firstmate_home_private_archive "$private_staging"
     echo "teardown: kept the retired $label's private records at $private_staging" >&2
     [ -z "$process_event_backup" ] || rm -rf -- "$process_event_backup"
     return 0
