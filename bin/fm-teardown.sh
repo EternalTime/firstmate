@@ -2713,8 +2713,61 @@ EOF
   printf '%s\n' "$abs_home_path"
 }
 
+# A leased home goes back to the pool for an unrelated worker, but treehouse's
+# return leaves git-ignored paths in place, and every private record a home
+# holds (data/, state/, config/, projects/, the secondmate markers) is ignored.
+# Move them into this home's data/retired-homes/<id>-<UTC timestamp>/ before the
+# return, so the retired home's backlog, reports and learnings are kept, a failed
+# return can put them back, and a successful one hands back a clean slot.
+# Prints the archive directory; its .manifest lists each moved path, NUL-separated,
+# and files/ holds the paths themselves.
+stage_firstmate_home_private_paths() {
+  local home=$1 label=$2 id=$3 staging rel parent base
+  base="$DATA/retired-homes/$id-$(date -u +%Y%m%dT%H%M%SZ)"
+  staging=$(umask 077; mkdir -p "$DATA/retired-homes" && { mkdir "$base" 2>/dev/null && printf '%s\n' "$base" || mktemp -d "$base-XXXXXX"; }) || {
+    echo "REFUSED: cannot archive the private records of $label $home before returning it" >&2
+    return 1
+  }
+  if ! git -C "$home" ls-files -z --others --ignored --exclude-standard --directory > "$staging/.listing"; then
+    rm -rf -- "$staging"
+    echo "REFUSED: cannot list the private records of $label $home before returning it" >&2
+    return 1
+  fi
+  printf '%s\0' "$SUB_HOME_MARKER" "$SUB_HOME_PARENT_MARKER" data state config projects >> "$staging/.listing"
+  : > "$staging/.manifest"
+  while IFS= read -r -d '' rel; do
+    rel=${rel%/}
+    [ -n "$rel" ] || continue
+    [ -e "$home/$rel" ] || [ -L "$home/$rel" ] || continue
+    parent=$(dirname -- "$rel")
+    if mkdir -p -- "$staging/files/$parent" && mv -- "$home/$rel" "$staging/files/$rel"; then
+      printf '%s\0' "$rel" >> "$staging/.manifest"
+      continue
+    fi
+    echo "REFUSED: cannot stage $home/$rel before returning $label $home" >&2
+    restore_firstmate_home_private_paths "$home" "$label" "$staging" || return $?
+    return 1
+  done < "$staging/.listing"
+  rm -f -- "$staging/.listing"
+  printf '%s\n' "$staging"
+}
+
+restore_firstmate_home_private_paths() {
+  local home=$1 label=$2 staging=$3 rel failed=0
+  while IFS= read -r -d '' rel; do
+    if ! { mkdir -p -- "$home/$(dirname -- "$rel")" && mv -- "$staging/files/$rel" "$home/$rel"; }; then
+      failed=1
+    fi
+  done < "$staging/.manifest"
+  if [ "$failed" -ne 0 ]; then
+    echo "error: could not restore every private record of $label $home; recover the rest from $staging/files" >&2
+    return 1
+  fi
+  rm -rf -- "$staging"
+}
+
 remove_firstmate_home() {
-  local home=$1 label=$2 expected_id=${3:-} abs_home_path process_event_backup
+  local home=$1 label=$2 expected_id=${3:-} abs_home_path process_event_backup private_staging
   [ -n "$home" ] || return 0
   [ -e "$home" ] || return 0
   abs_home_path=$(validate_firstmate_home_for_removal "$home" "$label" "$expected_id") || return 1
@@ -2733,11 +2786,17 @@ remove_firstmate_home() {
       restore_firstmate_home_process_events "$abs_home_path" "$label" "$process_event_backup" || return $?
       return 1
     }
-    teardown_treehouse_return "$abs_home_path" "$FM_ROOT" "$label" || {
-      echo "error: treehouse return failed for $label $abs_home_path; lease may still be held" >&2
+    private_staging=$(stage_firstmate_home_private_paths "$abs_home_path" "$label" "${expected_id:-${abs_home_path##*/}}") || {
       restore_firstmate_home_process_events "$abs_home_path" "$label" "$process_event_backup" || return $?
       return 1
     }
+    teardown_treehouse_return "$abs_home_path" "$FM_ROOT" "$label" || {
+      echo "error: treehouse return failed for $label $abs_home_path; lease may still be held" >&2
+      restore_firstmate_home_private_paths "$abs_home_path" "$label" "$private_staging" || return $?
+      restore_firstmate_home_process_events "$abs_home_path" "$label" "$process_event_backup" || return $?
+      return 1
+    }
+    echo "teardown: kept the retired $label's private records at $private_staging" >&2
     [ -z "$process_event_backup" ] || rm -rf -- "$process_event_backup"
     return 0
   fi
