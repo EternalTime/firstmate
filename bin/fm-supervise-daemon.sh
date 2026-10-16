@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# fm-supervise-daemon.sh — presence-gated sub-supervisor (closes #27's P2).
+# fm-supervise-daemon.sh - presence-gated sub-supervisor (closes #27's P2).
 #
 # Wraps bin/fm-watch.sh: runs it as a child, presents and classifies every
 # durable wake after an actionable close, acknowledges only after routing, and
@@ -475,7 +475,7 @@ classify_stale() {  # <window> <state> [<span-record> <span-status>]
   printf 'self|transient stale (%s): %s' "$win" "${last:-no status}"
 }
 
-classify_check() {  # <full reason>  — check scripts print only when firstmate should wake
+classify_check() {  # <full reason>  - check scripts print only when firstmate should wake
   printf 'escalate|%s' "$1"
 }
 
@@ -533,7 +533,7 @@ unknown_wake_acknowledge_flushed() {  # <state> <buffer>
 
 _stale_key() { printf '%s' "$1" | tr ':/.' '___'; }
 
-stale_marker_record() {  # <window> <state>  — create if absent
+stale_marker_record() {  # <window> <state>  - create if absent
   local win=$1 state=$2 key marker
   key=$(_stale_key "$(window_to_task "$win" "$state")")
   marker="$state/.subsuper-stale-$key"
@@ -886,7 +886,7 @@ escalate_flush() {  # <state>
   fi
   # Single-line wrapper: no embedded newlines (inject_msg also collapses as a
   # safety net, but keeping the source single-line makes the intent explicit).
-  msg=$(printf 'Supervisor escalate (%s event(s)): %s (pre-read; re-arm not needed — watcher daemon-managed)' "$ESCALATE_EVENTS" "$msg")
+  msg=$(printf 'Supervisor escalate (%s event(s)): %s (pre-read; re-arm not needed - watcher daemon-managed)' "$ESCALATE_EVENTS" "$msg")
   if inject_msg "$msg" "$state"; then
     unknown_wake_acknowledge_flushed "$state" "$buf" \
       || log "unknown-wake acknowledgement write failed; a delivered unknown wake may escalate again"
@@ -1169,7 +1169,7 @@ inject_wedge_alarm() {  # <state> <age-seconds>
   # the primary, backend-independent signal, so a non-tmux backend just skips
   # this cosmetic extra rather than attempting an unsupported call.
   if [ "$backend" = tmux ]; then
-    tmux display-message -t "$target" "fm: away-mode escalations WEDGED ${age}s — see $marker" 2>/dev/null || true
+    tmux display-message -t "$target" "fm: away-mode escalations WEDGED ${age}s - see $marker" 2>/dev/null || true
   fi
   # Backend-independent active alert. Unlike the tmux flash above (skipped on
   # every non-tmux backend), this can reach the captain even when every pane and
@@ -1887,7 +1887,7 @@ fm_super_main() {
   if discovered=$(discover_supervisor_target); then
     : # resolved cleanly
   else
-    echo "warn: could not auto-discover supervisor pane (no FM_SUPERVISOR_TARGET, TMUX_PANE, or HERDR_ENV/HERDR_PANE_ID); falling back to '$discovered' — verify this is firstmate's pane" >&2
+    echo "warn: could not auto-discover supervisor pane (no FM_SUPERVISOR_TARGET, TMUX_PANE, or HERDR_ENV/HERDR_PANE_ID); falling back to '$discovered' - verify this is firstmate's pane" >&2
   fi
   FM_SUPERVISOR_TARGET="$discovered"
   local TARGET="$FM_SUPERVISOR_TARGET"

@@ -75,7 +75,7 @@ fi
 REAL_MTIME=$(/usr/bin/stat -f %m "$0" 2>/dev/null) || true
 [ -n "$REAL_MTIME" ] && [ "$REAL_MTIME" -ge 0 ] || {
   PATH="$ORIGINAL_PATH"
-  fail "/usr/bin/stat -f %m sanity check failed — /usr/bin/stat is not working"
+  fail "/usr/bin/stat -f %m sanity check failed - /usr/bin/stat is not working"
 }
 pass "shadowing: fake GNU stat shadows /usr/bin/stat in PATH"
 

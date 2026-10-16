@@ -33,13 +33,18 @@
 #     `gh`). That local pass drops --external-sources and excludes SC1091,
 #     SC2034, SC2153, and SC2329. A branch with zero matching changed files
 #     skips ShellCheck and prints a "no changed lint targets" note, then
-#     still runs the backend-purity check and validates workflows.
+#     still runs the backend-purity and em dash checks and validates
+#     workflows.
 # Explicit paths always bypass this file-set selection and lint exactly the
 # given paths, matching the same config, without the workflow YAML check.
 # Explicit core bin/ and bin/backends/ scripts still receive the
 # backend-purity check. The backend-purity check rejects direct Beads CLI
 # invocations in the core bin/ and bin/backends/ scripts so every configured
 # backlog backend follows the same tasks-axi lifecycle path.
+# The em dash check enforces AGENTS.md's plain-dash rule: with no explicit
+# paths it scans every git-tracked file, and explicit paths scan just those
+# files. Recorded captures under tests/fixtures/ and fenced tool output under
+# docs/verification/ are exempt, as documented beside fm_lint_run_em_dash.
 #
 # Lint defaults to two concurrency-limited workers over two stable logical
 # shards, and each worker runs ONE canonical root per ShellCheck process, so a
@@ -52,7 +57,7 @@
 # exposes their actual roots.
 # Partition mode starts with full source-aware analysis, never changed-only
 # or --fast, and does not accept explicit paths. Each partition also runs
-# workflow lint and backend-purity checks, keeping either invocation
+# workflow lint, backend-purity, and em dash checks, keeping either invocation
 # independently useful.
 #
 # With FM_LINT_REQUIRE_BOUNDS=1, which CI sets, every per-root ShellCheck
@@ -709,6 +714,78 @@ fm_lint_run_backend_purity() {
   }
 }
 
+# AGENTS.md's general guidelines forbid the em dash (U+2014) in favor of a
+# plain dash. With no explicit paths every git-tracked file is scanned (every
+# regular file when the tree is not a git checkout); explicit paths scan just
+# those files. Binary files and symlinks are skipped. Two exemptions keep
+# verbatim evidence byte-exact: recorded captures under tests/fixtures/ and
+# exact tool output inside fenced code blocks (``` or ~~~) under
+# docs/verification/; prose there is checked like everywhere else. A lone em
+# dash between double quotes, as in the rule that names the character, is a
+# mention and passes.
+fm_lint_run_em_dash() {
+  local findings rc=0
+  local -a dash_cmd
+  if [ "$EXPLICIT_PATHS" -eq 1 ]; then
+    dash_cmd=(printf '%s\0' "${ROOTS[@]}")
+  elif command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    dash_cmd=(git ls-files -z)
+  else
+    dash_cmd=(find . -path ./.git -prune -o -type f -print0)
+  fi
+  # shellcheck disable=SC2016 # Perl, not the shell, expands its variables.
+  findings=$(set -o pipefail; "${dash_cmd[@]}" | "$PERL_BIN" -MCwd=realpath -e '
+    my $root = shift;
+    my $dash = "\xe2\x80\x94";
+    my $status = 0;
+    local $/ = "\0";
+    while (my $path = <STDIN>) {
+      chomp $path;
+      next if -l $path || ! -f $path;
+      my $resolved = realpath($path);
+      my $rel = $path;
+      $rel = substr($resolved, length($root) + 1)
+        if defined $resolved && index($resolved, "$root/") == 0;
+      next if $rel =~ m{^tests/fixtures/};
+      my $fences_exempt = $rel =~ m{^docs/verification/};
+      my $fh;
+      unless (open($fh, "<:raw", $path)) {
+        print "$rel: unreadable for the em dash check\n";
+        $status = 1;
+        next;
+      }
+      my $content = do { local $/; <$fh> };
+      close($fh);
+      next if !defined $content || index($content, "\0") >= 0;
+      next if index($content, $dash) < 0;
+      my $line_number = 0;
+      my $fence;
+      for my $line (split /\n/, $content, -1) {
+        $line_number++;
+        if ($fences_exempt) {
+          if (defined $fence) {
+            undef $fence if $line =~ /^ {0,3}\Q$fence\E[`~]*\s*$/;
+            next;
+          }
+          if ($line =~ /^ {0,3}(`{3,}|~{3,})/) {
+            $fence = $1;
+            next;
+          }
+        }
+        (my $scan = $line) =~ s/"\Q$dash\E"//g;
+        print "$rel:$line_number: em dash; use a plain dash \"-\"\n"
+          if index($scan, $dash) >= 0;
+      }
+    }
+    exit $status;
+  ' "$ROOT") || rc=$?
+  [ -z "$findings" ] || printf '%s\n' "$findings" >&2
+  if [ "$rc" -ne 0 ] && [ -z "$findings" ]; then
+    printf 'fm-lint.sh: the em dash check could not list or read its files (exit %s).\n' "$rc" >&2
+  fi
+  [ -z "$findings" ] && [ "$rc" -eq 0 ]
+}
+
 JOBS=${FM_LINT_JOBS:-2}
 TELEMETRY=${FM_LINT_TELEMETRY:-}
 FAST=0
@@ -938,6 +1015,7 @@ if [ "$CHANGED_MODE" -eq 1 ] && [ "$ROOT_COUNT" -eq 0 ]; then
   printf 'fm-lint.sh: no changed lint targets\n'
   overall_rc=0
   fm_lint_run_backend_purity || overall_rc=$?
+  fm_lint_run_em_dash || overall_rc=$?
   fm_lint_run_workflows || overall_rc=$?
   exit "$overall_rc"
 fi
@@ -1249,7 +1327,8 @@ done
 
 # Close the roots log with completion counts so a mid-run kill leaves
 # begun-but-unfinished roots attributable by name. result_exit is appended
-# after the purity and workflow checks so it records the run's final status.
+# after the purity, em dash, and workflow checks so it records the run's
+# final status.
 if [ -s "$ROOTS_LOG" ]; then
   read -r roots_completed roots_unfinished roots_begun <<EOF
 $(awk -F '\t' '
@@ -1270,6 +1349,11 @@ purity_rc=0
 fm_lint_run_backend_purity || purity_rc=$?
 if [ "$overall_rc" -eq 0 ] && [ "$purity_rc" -ne 0 ]; then
   overall_rc=$purity_rc
+fi
+em_dash_rc=0
+fm_lint_run_em_dash || em_dash_rc=$?
+if [ "$overall_rc" -eq 0 ] && [ "$em_dash_rc" -ne 0 ]; then
+  overall_rc=$em_dash_rc
 fi
 
 if [ "$overall_rc" -eq 0 ]; then

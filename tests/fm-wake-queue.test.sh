@@ -1933,7 +1933,7 @@ test_recovery_mint_and_delivery_log_avoid_sibling_subst() {
 
   # Historical bash 5.2 repro used CHLD + sibling $(); when bash >= 5 is the
   # runner, confirm the public mint still yields a nonempty generation with no
-  # trap parse error. Bash 5.2 is not installed on this host — skip otherwise.
+  # trap parse error. Bash 5.2 is not installed on this host - skip otherwise.
   if [ "${BASH_VERSINFO[0]}" -ge 5 ]; then
     rm -f -- "$state/.watcher-down"
     FM_STATE_OVERRIDE="$state" bash -c '
