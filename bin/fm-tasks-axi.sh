@@ -45,6 +45,10 @@
 #     the task record, status file, and inbox that go with the row - which such
 #     a row would lack, counting as live work nobody is doing that nothing
 #     later would notice (`start <id>` stays a documented direct transition);
+#   - `done` (or its `close` alias) while the task record `<state>/<id>.meta`
+#     (state is FM_STATE_OVERRIDE, else $FM_HOME/state) still exists, because
+#     only bin/fm-teardown.sh's landed-work check closes dispatched work, and
+#     an open PR has not landed;
 #   - a data directory that cannot be resolved, or whose backend configuration
 #     cannot be read (bin/fm-tasks-axi-lib.sh owns that diagnostic);
 #   - a markdown `<data>/backlog.md` that is itself a symlink, because the
@@ -58,6 +62,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FM_ROOT="${FM_ROOT_OVERRIDE:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 FM_HOME="${FM_HOME:-${FM_ROOT_OVERRIDE:-$FM_ROOT}}"
 DATA="${FM_DATA_OVERRIDE:-$FM_HOME/data}"
+STATE="${FM_STATE_OVERRIDE:-$FM_HOME/state}"
 # shellcheck source=bin/fm-tasks-axi-lib.sh disable=SC1091
 . "$SCRIPT_DIR/fm-tasks-axi-lib.sh"
 # shellcheck source=bin/fm-backlog-transition-lib.sh disable=SC1091
@@ -126,6 +131,33 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+# The id `done <id> [flags]` names: the first argument after the command that
+# is neither a flag nor a flag's value.
+done_task_id() {
+  local arg skip_value=0
+  shift
+  for arg in "$@"; do
+    if [ "$skip_value" = 1 ]; then
+      skip_value=0
+      continue
+    fi
+    case "$arg" in
+      --pr|--report|--note|--keep) skip_value=1 ;;
+      -*) : ;;
+      *) printf '%s' "$arg"; return 0 ;;
+    esac
+  done
+}
+
+case "${1:-}" in
+  done|close)
+    done_id=$(done_task_id "$@")
+    if [ -n "$done_id" ] && [ -e "$STATE/$done_id.meta" ]; then
+      fail "$done_id still has a task record at $STATE/$done_id.meta, so its work may not have landed yet; bin/fm-teardown.sh $done_id closes the row once the work is in the branch this home follows"
+    fi
+    ;;
+esac
 
 command -v tasks-axi >/dev/null 2>&1 || fail "tasks-axi is not on PATH; run bin/fm-bootstrap.sh for the install command"
 
