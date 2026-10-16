@@ -163,6 +163,11 @@ HOMES_FILE="$TMP_ROOT/homes"
 # Stop whatever a case left running, by the exact pids its home recorded.
 stop_home_processes() {  # <home>
   local home=$1 pid arms='' i=0
+  # A downtime resurface is sent only when there is something to present, so
+  # a stopped watcher's closing recovery wake needs a real open decision.
+  printf 'needs-decision [key=stop-home]: fixture is held for a decision\n' \
+    > "$home/state/stop-home.status"
+  prime_status_seen "$home/state" "$home/state/stop-home.status"
   if [ -f "$home/state/.supervision-host" ]; then
     arms=$(awk -F '\t' '$1 == "arm" { print $2 }' "$home/state/.supervision-host")
     pid=$(awk -F '\t' '$1 == "host" { print $2; exit }' "$home/state/.supervision-host")
