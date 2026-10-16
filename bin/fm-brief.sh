@@ -751,6 +751,22 @@ IFS= read -r -d '' SCREEN_RULE <<'EOF' || true
 EOF
 SCREEN_RULE=${SCREEN_RULE%$'\n'}
 
+# One shared string keeps the ship and scout incremental-write rule identical.
+# A single oversized write that fails or is cut off loses everything it carried,
+# so the deliverable must exist on disk early and grow in saved passes. The
+# secondmate charter omits it because a secondmate delegates deliverables.
+IFS= read -r -d '' INCREMENTAL_WRITE_RULE <<'EOF' || true
+9. Build your deliverable on disk in incremental passes, never in one oversized write.
+   Create the deliverable file early, as soon as you know its shape, as a working skeleton:
+   its headings and outline, or the smallest version of the change that runs.
+   Save that skeleton at once - commit it when the deliverable lives in this worktree's git -
+   then grow it one section or one change at a time, saving or committing each finished pass
+   before you start the next.
+   A write that fails or is cut off loses everything it carried, while passes already on disk
+   survive, so never hold a large body of findings or code back for one final write.
+EOF
+INCREMENTAL_WRITE_RULE=${INCREMENTAL_WRITE_RULE%$'\n'}
+
 if [ -n "$BASE_BRANCH" ]; then
   SETUP_BASE="You are in a disposable git worktree of $REPO, at a detached HEAD on a clean copy of its base branch.
 Base branch: $BASE_BRANCH"
@@ -800,6 +816,7 @@ $CREWMATE_PAUSE_INSTRUCTIONS
    Firstmate's reply normally writes that closing line at answer time; when a blocker or wait clears WITHOUT a firstmate reply, append \`resolved [at=<epoch>]: {how it cleared}\` yourself (same \`[key=<slug>]\` if you opened it with one) as you resume.
 $SHARED_INFRA_RULE
 $SCREEN_RULE
+$INCREMENTAL_WRITE_RULE
 
 $WAIT_BLOCK$INBOX_SECTION
 
@@ -884,6 +901,7 @@ $ASK_USER_BLOCK
    Firstmate's reply normally writes that closing line at answer time; when a blocker or wait clears WITHOUT a firstmate reply, append \`resolved [at=<epoch>]: {how it cleared}\` yourself (same \`[key=<slug>]\` if you opened it with one) as you resume.
 $SHARED_INFRA_RULE
 $SCREEN_RULE
+$INCREMENTAL_WRITE_RULE
 
 $WAIT_BLOCK$INBOX_SECTION
 

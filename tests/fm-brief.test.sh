@@ -1840,6 +1840,55 @@ test_crewmate_scaffolds_announce_visible_surfaces() {
   pass "fm-brief.sh: every crewmate scaffold announces a visible surface before and after it is in use"
 }
 
+test_crewmate_scaffolds_require_incremental_writes() {
+  local home id brief mode ship_rule scout_rule
+  home="$TMP_ROOT/incremental-write-home"
+  mkdir -p "$home/data"
+
+  for mode in no-mistakes direct-PR local-only; do
+    id="brief-incremental-$mode"
+    FM_HOME="$home" "$ROOT/bin/fm-brief.sh" "$id" alpha --mode "$mode" >/dev/null 2>&1 \
+      || fail "fm-brief.sh --mode $mode exited non-zero"
+    brief="$home/data/$id/brief.md"
+    assert_grep "never in one oversized write" "$brief" \
+      "$mode ship brief did not forbid one oversized write"
+    assert_grep "Create the deliverable file early" "$brief" \
+      "$mode ship brief did not require creating the deliverable early"
+    assert_grep "working skeleton" "$brief" \
+      "$mode ship brief did not require a working skeleton"
+    assert_grep "commit it when the deliverable lives in this worktree" "$brief" \
+      "$mode ship brief did not require committing the skeleton"
+    assert_grep "incremental passes" "$brief" \
+      "$mode ship brief did not require growing the deliverable in passes"
+  done
+
+  FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-incremental-scout alpha --scout >/dev/null 2>&1 \
+    || fail "fm-brief.sh --scout exited non-zero"
+  brief="$home/data/brief-incremental-scout/brief.md"
+  assert_grep "Create the deliverable file early" "$brief" \
+    "scout brief did not require creating the report early"
+
+  # One shared string, not two copies: the emitted rule must be byte-identical
+  # across the ship and scout scaffolds, and must sit inside Rules before the
+  # sections that follow it.
+  ship_rule=$(awk '/^9\. Build your deliverable/,/^$/' "$home/data/brief-incremental-no-mistakes/brief.md")
+  scout_rule=$(awk '/^9\. Build your deliverable/,/^$/' "$brief")
+  [ -n "$ship_rule" ] || fail "ship brief emitted no numbered incremental-write rule"
+  [ "$ship_rule" = "$scout_rule" ] \
+    || fail "ship and scout incremental-write rules have drifted apart"
+  awk '/^# Rules$/{r=1} /^# Firstmate instruction inbox$/{r=0} r && /^9\. Build your deliverable/{found=1} END{exit !found}' "$brief" \
+    || fail "scout incremental-write rule is not inside the Rules section"
+
+  # A secondmate delegates its deliverables, so its charter does not carry it.
+  FM_SECONDMATE_CHARTER='Supervise the alpha domain.' \
+    FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-incremental-mate --secondmate alpha >/dev/null 2>&1 \
+    || fail "fm-brief.sh --secondmate exited non-zero"
+  assert_no_grep "never in one oversized write" "$home/data/brief-incremental-mate/brief.md" \
+    "secondmate charter must not inherit the crewmate incremental-write rule"
+
+  pass "fm-brief.sh: every crewmate scaffold requires an early skeleton grown in incremental passes"
+}
+
 test_script_parses
 test_no_heredoc_in_command_substitution
 test_help_includes_entire_header
@@ -1883,3 +1932,4 @@ test_branch_prefix_value_is_validated
 test_branch_prefix_command_is_shell_safe
 test_crewmate_scaffolds_forbid_pool_administration
 test_crewmate_scaffolds_announce_visible_surfaces
+test_crewmate_scaffolds_require_incremental_writes
