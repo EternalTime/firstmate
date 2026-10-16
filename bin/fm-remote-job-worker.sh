@@ -33,6 +33,8 @@
 # serving process is alive and its recorded lock ownership still verifies.
 # The heartbeat recreates a missing ready file with the serving process's PID
 # and mode 0600 after verifying ownership, without waiting for the serving loop.
+# A refresh already past its ownership check can still land once after the
+# serving process dies, so startup readiness also requires the live owner.
 # Losing lock ownership stops heartbeat refresh; losing the heartbeat process
 # while still owning the lock stops the serving loop on its next pass.
 # The stale sweep, whose state preparation also re-applies the queue directories' 0700
