@@ -725,6 +725,30 @@ IFS= read -r -d '' SHARED_INFRA_RULE <<'EOF' || true
 EOF
 SHARED_INFRA_RULE=${SHARED_INFRA_RULE%$'\n'}
 
+# One shared string keeps the ship and scout screen-ownership rule identical.
+# A window a worker opens lands on the captain's own desktop, where he cannot
+# tell a worker's test surface from his own software and may type into it
+# mid-run. The opening announcement is a keyed needs-decision so it both wakes
+# firstmate (it is captain-relevant) and holds the worker until firstmate has
+# warned him; a plain working: line would be absorbed and the window would
+# appear unannounced. Headless runs show nothing on screen and are exempt.
+# The secondmate charter omits it: a secondmate dispatches workers rather than
+# opening surfaces itself, and its workers receive this rule in their briefs.
+IFS= read -r -d '' SCREEN_RULE <<'EOF' || true
+8. Never let a window appear on the captain's screen unannounced: he cannot tell a window you
+   opened from his own software and will type into it. Before you open any visible surface on
+   this machine - an application window, simulator, emulator, browser, or anything else that
+   shows on his screen - append
+   `needs-decision [at=<epoch>] [key=screen-<slug>]: about to open {what} on the captain's screen for {why}; hands off until released`
+   and stop until firstmate answers; it warns him first. Headless runs that show nothing on
+   screen need no announcement. When you are finished with the surface, release it: if your
+   task is ending, name it in your `done:` line as closed or as left open and his to use;
+   otherwise append
+   `needs-decision [at=<epoch>] [key=screen-<slug>-free]: {what} closed, or left open and the captain's to use`
+   and stop until firstmate answers.
+EOF
+SCREEN_RULE=${SCREEN_RULE%$'\n'}
+
 if [ -n "$BASE_BRANCH" ]; then
   SETUP_BASE="You are in a disposable git worktree of $REPO, at a detached HEAD on a clean copy of its base branch.
 Base branch: $BASE_BRANCH"
@@ -773,6 +797,7 @@ $CREWMATE_PAUSE_INSTRUCTIONS
    A decision or blocker you opened stays open until a \`resolved\` line carrying its exact key lands; a later \`done:\` or \`working:\` line never closes it, even when the answer is what started that work.
    Firstmate's reply normally writes that closing line at answer time; when a blocker or wait clears WITHOUT a firstmate reply, append \`resolved [at=<epoch>]: {how it cleared}\` yourself (same \`[key=<slug>]\` if you opened it with one) as you resume.
 $SHARED_INFRA_RULE
+$SCREEN_RULE
 
 $WAIT_BLOCK$INBOX_SECTION
 
@@ -856,6 +881,7 @@ $ASK_USER_BLOCK
    A decision or blocker you opened stays open until a \`resolved\` line carrying its exact key lands; a later \`done:\` or \`working:\` line never closes it, even when the answer is what started that work.
    Firstmate's reply normally writes that closing line at answer time; when a blocker or wait clears WITHOUT a firstmate reply, append \`resolved [at=<epoch>]: {how it cleared}\` yourself (same \`[key=<slug>]\` if you opened it with one) as you resume.
 $SHARED_INFRA_RULE
+$SCREEN_RULE
 
 $WAIT_BLOCK$INBOX_SECTION
 
