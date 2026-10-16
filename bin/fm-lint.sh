@@ -1327,7 +1327,8 @@ done
 
 # Close the roots log with completion counts so a mid-run kill leaves
 # begun-but-unfinished roots attributable by name. result_exit is appended
-# after the purity and workflow checks so it records the run's final status.
+# after the purity, em dash, and workflow checks so it records the run's
+# final status.
 if [ -s "$ROOTS_LOG" ]; then
   read -r roots_completed roots_unfinished roots_begun <<EOF
 $(awk -F '\t' '
