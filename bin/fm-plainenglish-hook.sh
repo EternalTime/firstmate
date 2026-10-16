@@ -26,7 +26,10 @@
 # away-supervisor injections into the primary's pane, which is a prompt
 # submission, so an unmarked line would ride along on that turn and read as the
 # captain returning. The reminder is therefore unmarked AND silent while
-# state/.afk exists. The accepted cost is one turn: bin/fm-afk-return.sh is what
+# state/.afk exists in away mode. Quiet mode shares that flag but is exited only
+# by an explicit /quiet off, never by an unmarked message, and the captain is
+# present and chatting throughout it, so the reminder stays on there. The
+# accepted cost of away-mode silence is one turn: bin/fm-afk-return.sh is what
 # clears the flag, so the captain's own returning message arrives while the flag
 # is still present and goes without the reminder, which is the right trade
 # against dropping a fleet out of supervision.
@@ -39,7 +42,7 @@
 #   SILENT - exit 0 with no output: this home switched the reminder off, this is
 #            not a genuine primary home (a crewmate/scout task worktree or a
 #            non-firstmate repo), this is a no-mistakes gate agent, or away mode
-#            is active.
+#            (not quiet mode) is active.
 #   Every path exits 0 and writes nothing. Claude blocks and erases the
 #   captain's prompt on hook exit 2, so this script never returns non-zero, and
 #   the registration in .claude/settings.json additionally pins the exit to 0 so
@@ -65,8 +68,14 @@ fm_is_gate_agent "$FM_ROOT" && exit 0
 fm_primary_scope_matches "$FM_ROOT" "$STATE" || exit 0
 
 # Away mode: stay silent so no unmarked line rides along with the daemon's
-# marked injections. The header owns the reasoning.
-[ -e "$STATE/.afk" ] && exit 0
+# marked injections. Quiet mode keeps the reminder. The header owns the reasoning.
+# Only an exact first line "quiet" is quiet mode, as bin/fm-wake-lib.sh's
+# fm_afk_mode reads it; this per-turn hook reads that one line itself rather
+# than sourcing the wake library and its dependency chain on every prompt.
+if [ -e "$STATE/.afk" ]; then
+  afk_mode=$(head -n 1 "$STATE/.afk" 2>/dev/null) || afk_mode=
+  [ "$afk_mode" = quiet ] || exit 0
+fi
 
 # The off switch: only the exact word "off" disables the reminder, read with the
 # whitespace-stripped, case-folded convention the other scalar config items use.

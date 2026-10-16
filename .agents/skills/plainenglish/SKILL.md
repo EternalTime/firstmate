@@ -47,7 +47,7 @@ Ordinary conversation in the same session, including the message that starts or 
 Its header owns the mechanism and the reasoning for that event: no harness fires a hook between composing a reply and the captain reading it, so the rule has to arrive before composition rather than gate the output.
 Claude is the tracked transport, registered in `.claude/settings.json`; a primary on a harness with no prompt-submission context injection simply operates on this contract from `AGENTS.md` section 9 with no reminder.
 The reminder is inert outside a genuine primary home, so a crewmate in its own task worktree never sees it.
-No reminder is injected at all while away mode is active, for the reason its header records.
+No reminder is injected at all while away mode is active, for the reason its header records; quiet mode, where the captain stays present, keeps it.
 
 ## Turning it off
 

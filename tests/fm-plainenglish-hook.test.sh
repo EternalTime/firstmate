@@ -157,6 +157,19 @@ test_silent_while_away() {
   expect_code 0 "$STATUS" "an away-mode turn must exit 0"
   [ -z "$OUT" ] || fail "away mode must add nothing unmarked to the turn, got: $OUT"
 
+  # Quiet mode shares the flag, but the captain is present and only /quiet off
+  # exits it, so an ordinary turn there still carries the reminder.
+  printf 'quiet\n' > "$PRIMARY/state/.afk"
+  run_away_hook
+  expect_code 0 "$STATUS" "a quiet-mode turn must exit 0"
+  [ -n "$OUT" ] || fail "quiet mode must keep the reminder for the present captain"
+
+  # A legacy or away-mode flag still silences it.
+  printf 'away\n' > "$PRIMARY/state/.afk"
+  run_away_hook
+  expect_code 0 "$STATUS" "an away-mode turn must exit 0"
+  [ -z "$OUT" ] || fail "away mode must add nothing unmarked to the turn, got: $OUT"
+
   # Scoped to away mode, not permanent: the same daemon-shaped turn reminds again
   # once the flag is gone.
   rm -f "$PRIMARY/state/.afk"
@@ -164,7 +177,7 @@ test_silent_while_away() {
   expect_code 0 "$STATUS" "the turn after away mode must exit 0"
   [ -n "$OUT" ] || fail "the reminder must return once away mode ends"
 
-  pass "the reminder is silent while away mode is active and returns after it"
+  pass "the reminder is silent while away mode is active, stays on in quiet mode, and returns after away mode"
 }
 
 test_inert_outside_a_primary_home() {
