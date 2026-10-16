@@ -239,14 +239,16 @@ function statusLineUnstamped(line: string): string {
 }
 
 // The key a line states in one of the status parser's declared positions, if
-// any: before the head's colon, or at the head of its note.
+// any: before the head's colon, else at the head of its note, else as the last
+// thing on the line (bin/fm-classify-lib.sh's _fm_key_at_note_tail).
 function declaredDecisionKey(rawLine: string): string | undefined {
   const line = statusLineUnstamped(rawLine);
   const colon = line.indexOf(":");
   const beforeColon = colon < 0 ? line : line.slice(0, colon);
   const beforeMatch = beforeColon.match(/\[key=([^\]]*)\]/);
-  const noteMatch = beforeMatch || colon < 0 ? null : line.slice(colon + 1).trimStart().match(/^\[key=([^\]]*)\]/);
-  return (beforeMatch ?? noteMatch)?.[1];
+  if (beforeMatch || colon < 0) return beforeMatch?.[1];
+  const note = line.slice(colon + 1);
+  return (note.trimStart().match(/^\[key=([^\]]*)\]/) ?? note.trimEnd().match(/.*\[key=([^\]]*)\]$/))?.[1];
 }
 
 function decisionKey(line: string): string | null {
@@ -254,14 +256,18 @@ function decisionKey(line: string): string | null {
   return /^[A-Za-z0-9._-]+$/.test(key) ? key : null;
 }
 
+// A note-head or note-tail token that states the line's key is key metadata,
+// not note text, so it is stripped; a malformed one stays.
 function statusLineNote(rawLine: string): string {
   const line = statusLineUnstamped(rawLine);
   const colon = line.indexOf(":");
   if (colon < 0) return line;
   const note = line.slice(colon + 1).trimStart();
   if (/\[key=[^\]]*\]/.test(line.slice(0, colon))) return note;
-  const match = note.match(/^\[key=([A-Za-z0-9._-]+)\]/);
-  return match ? note.slice(match[0].length).trimStart() : note;
+  const head = note.match(/^\[key=([^\]]*)\]/);
+  if (head) return /^[A-Za-z0-9._-]+$/.test(head[1]) ? note.slice(head[0].length).trimStart() : note;
+  const tail = note.trimEnd().match(/\[key=([A-Za-z0-9._-]+)\]$/);
+  return tail ? note.trimEnd().slice(0, -tail[0].length).trimEnd() : note;
 }
 
 interface StaleDecisionCacheEntry {
