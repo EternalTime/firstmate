@@ -227,6 +227,39 @@ test_wrapper_refuses_add_start() {
   pass "fm-tasks-axi.sh refuses add --start while plain add and start <id> pass through"
 }
 
+# A dispatched task's row closes only through bin/fm-teardown.sh, in the same
+# step as its landed-work check; a hand-run done while the task record still
+# exists would record an open, unmerged PR as finished work.
+test_wrapper_refuses_done_before_teardown() {
+  local dir out rc before spelling
+  dir=$(make_split wrapper-done-live)
+  wrapper_from_code "$dir" add live-1 "dispatched ship" --kind ship >/dev/null || fail "add live-1 failed"
+  wrapper_from_code "$dir" start live-1 >/dev/null || fail "start live-1 failed"
+  printf 'kind=ship\nmode=no-mistakes\nbranch=fm/live-1\npr=https://github.com/o/r/pull/9\n' \
+    > "$dir/home/state/live-1.meta"
+  before=$(cat "$dir/home/data/backlog.md")
+  for spelling in "done live-1" "close live-1" "done --json live-1" \
+    "done --pr https://github.com/o/r/pull/9 live-1" "done live-1 --note landed"; do
+    # shellcheck disable=SC2086 # Each spelling is deliberately word-split.
+    out=$(wrapper_from_code "$dir" $spelling 2>&1)
+    rc=$?
+    expect_code 2 "$rc" "$spelling with a live task record"
+    assert_contains "$out" "bin/fm-teardown.sh live-1" "the $spelling refusal did not name cleanup"
+    assert_equals "$before" "$(cat "$dir/home/data/backlog.md")" "a refused $spelling still closed the row"
+  done
+
+  out=$(cd "$dir/code" && FM_HOME="$dir/home" FM_STATE_OVERRIDE="$dir/elsewhere" "$WRAPPER" "done" live-1 2>&1)
+  rc=$?
+  expect_code 0 "$rc" "done under a state override with no record there"
+  wrapper_from_code "$dir" reopen live-1 >/dev/null || fail "reopen live-1 failed"
+
+  rm "$dir/home/state/live-1.meta"
+  wrapper_from_code "$dir" "done" live-1 >/dev/null || fail "done after the task record was removed was refused"
+  wrapper_from_code "$dir" add queued-1 "never dispatched" >/dev/null || fail "add queued-1 failed"
+  wrapper_from_code "$dir" "done" queued-1 >/dev/null || fail "done on a never-dispatched row was refused"
+  pass "fm-tasks-axi.sh refuses done and close while a task record exists, and passes them through once it is gone"
+}
+
 test_wrapper_single_home() {
   local dir
   dir="$TMP_ROOT/single-wrapper"
@@ -248,6 +281,7 @@ if [ "$HAVE_TASKS_AXI" = 1 ]; then
   test_wrapper_overrides_ambient_file
   test_wrapper_refusals
   test_wrapper_refuses_add_start
+  test_wrapper_refuses_done_before_teardown
   test_wrapper_single_home
 else
   echo "skip: tasks-axi not found; home-addressing cases not run"
