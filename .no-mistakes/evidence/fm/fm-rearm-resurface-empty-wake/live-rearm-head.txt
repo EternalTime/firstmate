@@ -1,0 +1,46 @@
+### scenario: covered  (scripts from /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M534EDW3XDGGSDN8V13ZMXH6)
+--- first arm:
+watcher: started pid=47892 (beacon fresh)
+--- state files: .branch-outcome-index-ready .branch-outcomes-cursor .branch-outcomes-tail.jsonl .covered.branch-outcome-index .seen-covered_status branch-outcomes.jsonl covered.status 
+--- recovery arm output after 3s (arm still alive=yes):
+watcher: started pid=50095 (beacon fresh)
+--- .watcher-down token: acked:downtime:47892.1792180708.T4N8no
+--- fm-wake-drain.sh output:
+[drain exit=0 bytes above]
+
+### scenario: reserved  (scripts from /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M534EDW3XDGGSDN8V13ZMXH6)
+--- first arm:
+watcher: started pid=70864 (beacon fresh)
+--- state files: .seen-foreign_status foreign.status 
+--- recovery arm output after 3s (arm still alive=yes):
+watcher: started pid=76559 (beacon fresh)
+--- .watcher-down token: acked:downtime:70864.1792180741.pCarr2
+--- fm-wake-drain.sh output:
+[drain exit=0 bytes above]
+
+### scenario: mixed  (scripts from /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M534EDW3XDGGSDN8V13ZMXH6)
+--- first arm:
+watcher: started pid=85592 (beacon fresh)
+--- state files: .branch-outcome-index-ready .branch-outcomes-cursor .branch-outcomes-tail.jsonl .covered.branch-outcome-index .seen-covered_status .seen-fresh_status branch-outcomes.jsonl covered.status fresh.status 
+--- recovery arm output after 3s (arm still alive=no):
+watcher: started pid=87882 (beacon fresh)
+check: rearm-resurface
+--- .watcher-down token: announced:downtime:85592.1792180748.f8fVdD
+cat: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.O7R21a/state/.watch.lock/pid: No such file or directory
+--- fm-wake-drain.sh output:
+STATUS OUTCOME BACKSTOP (newest captain-facing task event has no covering branch outcome):
+fresh done: PR https://example.test/88 checks green
+[drain exit=0 bytes above]
+
+### scenario: noready  (scripts from /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M534EDW3XDGGSDN8V13ZMXH6)
+--- first arm:
+watcher: started pid=4364 (beacon fresh)
+--- state files: .branch-outcomes-cursor .branch-outcomes-tail.jsonl .covered.branch-outcome-index .seen-covered_status branch-outcomes.jsonl covered.status 
+--- recovery arm output after 3s (arm still alive=no):
+watcher: started pid=6827 (beacon fresh)
+check: rearm-resurface
+--- .watcher-down token: announced:downtime:4364.1792180766.ZsdtWB
+cat: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.yrnKeN/state/.watch.lock/pid: No such file or directory
+--- fm-wake-drain.sh output:
+[drain exit=0 bytes above]
+

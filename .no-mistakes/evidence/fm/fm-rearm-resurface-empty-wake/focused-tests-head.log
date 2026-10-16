@@ -1,0 +1,3 @@
+ok - watch-arm: downtime still resurfaces a queued wake, an open decision, an unread note, and an unpresented task outcome
+ok - watch-arm: an empty fleet re-arms silently instead of resurfacing nothing
+ok - watch-arm: recovery stays silent over task events the drain's outcome backstop skips

@@ -1,0 +1,24 @@
+### scenario: covered  (scripts from /private/tmp/fm-base-01M534)
+--- first arm:
+watcher: started pid=78897 (beacon fresh)
+--- state files: .branch-outcome-index-ready .branch-outcomes-cursor .branch-outcomes-tail.jsonl .covered.branch-outcome-index .seen-covered_status branch-outcomes.jsonl covered.status 
+--- recovery arm output after 3s (arm still alive=no):
+watcher: started pid=80352 (beacon fresh)
+check: rearm-resurface
+--- .watcher-down token: announced:downtime:78897.1792180957.VNgDjx
+cat: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.0R8Y48/state/.watch.lock/pid: No such file or directory
+--- fm-wake-drain.sh output:
+[drain exit=0 bytes above]
+
+### scenario: reserved  (scripts from /private/tmp/fm-base-01M534)
+--- first arm:
+watcher: started pid=86263 (beacon fresh)
+--- state files: .seen-foreign_status foreign.status 
+--- recovery arm output after 3s (arm still alive=no):
+watcher: started pid=87501 (beacon fresh)
+check: rearm-resurface
+--- .watcher-down token: announced:downtime:86263.1792180964.pLNrbR
+cat: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.D4UNll/state/.watch.lock/pid: No such file or directory
+--- fm-wake-drain.sh output:
+[drain exit=0 bytes above]
+

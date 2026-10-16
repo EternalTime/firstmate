@@ -1,0 +1,4 @@
+ok - watch-arm: downtime still resurfaces a queued wake, an open decision, an unread note, and an unpresented task outcome
+ok - watch-arm: an empty fleet re-arms silently instead of resurfacing nothing
+not ok - a keyed decision the fold rejects woke with nothing to report: watcher: started pid=46555 (beacon fresh)
+check: rearm-resurface
