@@ -26,6 +26,7 @@
 # It costs three real model turns.
 set -u
 
+# shellcheck source=tests/lib.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 fm_live_gate opt-in FM_PLAINENGLISH_LIVE_E2E claude

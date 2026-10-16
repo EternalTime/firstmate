@@ -1160,8 +1160,8 @@ test_briefs_require_the_worker_stopwatch() {
     # The two numbers ride the note of a status line that already exists, so the
     # line the scaffold teaches must still fold as an ordinary working event:
     # the verb parses, and nothing in the measurement opens a decision. Driven
-    # through the real shared classifier in a subshell, so its globals stay out
-    # of the rest of this file.
+    # through the real shared classifier in a separate bash, so its globals stay
+    # out of the rest of this file.
     # The worker substitutes a real Unix time for the <epoch> placeholder as it
     # appends, so the line is parsed the way it would actually be written.
     # shellcheck disable=SC2016 # Literal sed script: the backticks and \1 must not expand.
@@ -1170,11 +1170,9 @@ test_briefs_require_the_worker_stopwatch() {
     example=${example/<epoch>/1760000000}
     log="$home/${brief##*/}.taught.status"
     printf '%s\n' "$example" > "$log"
-    parsed=$(
-      # shellcheck source=bin/fm-classify-lib.sh
-      . "$ROOT/bin/fm-classify-lib.sh"
-      printf '%s|%s' "$(status_line_verb "$example")" "$(status_open_decisions "$log")"
-    )
+    # shellcheck disable=SC2016 # The inner script expands its own positional arguments.
+    parsed=$(bash -c '. "$1"; printf "%s|%s" "$(status_line_verb "$2")" "$(status_open_decisions "$3")"' \
+      _ "$ROOT/bin/fm-classify-lib.sh" "$example" "$log")
     [ "$parsed" = "working|" ] \
       || fail "$brief: the taught status line no longer folds as a plain working event (got '$parsed')"
   done
