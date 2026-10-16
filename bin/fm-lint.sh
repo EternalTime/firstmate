@@ -43,7 +43,8 @@
 # backlog backend follows the same tasks-axi lifecycle path.
 # The em dash check enforces AGENTS.md's plain-dash rule: with no explicit
 # paths it scans every git-tracked file, and explicit paths scan just those
-# files. Its exemptions are documented beside fm_lint_run_em_dash.
+# files. Recorded captures under tests/fixtures/ and fenced tool output under
+# docs/verification/ are exempt, as documented beside fm_lint_run_em_dash.
 #
 # Lint defaults to two concurrency-limited workers over two stable logical
 # shards, and each worker runs ONE canonical root per ShellCheck process, so a
@@ -718,8 +719,10 @@ fm_lint_run_backend_purity() {
 # regular file when the tree is not a git checkout); explicit paths scan just
 # those files. Binary files and symlinks are skipped. Two exemptions keep
 # verbatim evidence byte-exact: recorded captures under tests/fixtures/ and
-# exact tool output under docs/verification/. A lone em dash between double
-# quotes, as in the rule that names the character, is a mention and passes.
+# exact tool output inside fenced code blocks (``` or ~~~) under
+# docs/verification/; prose there is checked like everywhere else. A lone em
+# dash between double quotes, as in the rule that names the character, is a
+# mention and passes.
 fm_lint_run_em_dash() {
   local findings rc=0
   local -a dash_cmd
@@ -743,7 +746,8 @@ fm_lint_run_em_dash() {
       my $rel = $path;
       $rel = substr($resolved, length($root) + 1)
         if defined $resolved && index($resolved, "$root/") == 0;
-      next if $rel =~ m{^(?:tests/fixtures|docs/verification)/};
+      next if $rel =~ m{^tests/fixtures/};
+      my $fences_exempt = $rel =~ m{^docs/verification/};
       my $fh;
       unless (open($fh, "<:raw", $path)) {
         print "$rel: unreadable for the em dash check\n";
@@ -755,8 +759,19 @@ fm_lint_run_em_dash() {
       next if !defined $content || index($content, "\0") >= 0;
       next if index($content, $dash) < 0;
       my $line_number = 0;
+      my $fence;
       for my $line (split /\n/, $content, -1) {
         $line_number++;
+        if ($fences_exempt) {
+          if (defined $fence) {
+            undef $fence if $line =~ /^ {0,3}\Q$fence\E[`~]*\s*$/;
+            next;
+          }
+          if ($line =~ /^ {0,3}(`{3,}|~{3,})/) {
+            $fence = $1;
+            next;
+          }
+        }
         (my $scan = $line) =~ s/"\Q$dash\E"//g;
         print "$rel:$line_number: em dash; use a plain dash \"-\"\n"
           if index($scan, $dash) >= 0;

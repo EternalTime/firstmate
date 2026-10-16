@@ -1250,7 +1250,10 @@ test_rejects_em_dashes_outside_verbatim_evidence() {
   printf '# Notes\nA clause %s and another.\n' "$dash" > "$tmp/repo/docs/note.md"
   printf '#!/usr/bin/env bash\n# helper %s comment\nexit 0\n' "$dash" > "$tmp/repo/bin/helper.sh"
   printf 'captured %s output\n' "$dash" > "$tmp/repo/tests/fixtures/capture.ansi"
-  printf 'authenticated %s token valid\n' "$dash" > "$tmp/repo/docs/verification/tool.md"
+  printf '# Probe\n\n```\n$ tool status\nauthenticated %s token valid\n```\n\nThe probe passed.\n' "$dash" \
+    > "$tmp/repo/docs/verification/tool.md"
+  printf '# Probe\n\n```\nauthenticated\n```\n\nThe probe passed %s token valid.\n' "$dash" \
+    > "$tmp/repo/docs/verification/prose.md"
   printf 'Never use the em dash "%s".\n' "$dash" > "$tmp/repo/AGENTS.md"
   printf 'bin\0ary %s\n' "$dash" > "$tmp/repo/blob.bin"
 
@@ -1261,15 +1264,17 @@ test_rejects_em_dashes_outside_verbatim_evidence() {
     "lint did not name the Markdown em dash by file and line"
   assert_contains "$out" 'bin/helper.sh:2: em dash; use a plain dash "-"' \
     "lint did not name the shell comment em dash by file and line"
+  assert_contains "$out" 'docs/verification/prose.md:7: em dash; use a plain dash "-"' \
+    "lint did not name the docs/verification prose em dash by file and line"
   for exempt in tests/fixtures/capture.ansi docs/verification/tool.md AGENTS.md blob.bin; do
     assert_not_contains "$out" "$exempt:" "lint flagged an exempt em dash in $exempt"
   done
 
-  rm "$tmp/repo/docs/note.md" "$tmp/repo/bin/helper.sh"
+  rm "$tmp/repo/docs/note.md" "$tmp/repo/bin/helper.sh" "$tmp/repo/docs/verification/prose.md"
   rc=0
   out=$(cd "$tmp/repo" && CI=true PATH="$fakebin:$PATH" "$lint_copy" 2>&1) || rc=$?
   [ "$rc" -eq 0 ] || fail "lint failed on exempt em dashes only (exit $rc)"$'\n'"$out"
-  pass "fm-lint.sh rejects em dashes everywhere except verbatim evidence and quoted mentions"
+  pass "fm-lint.sh rejects em dashes everywhere except verbatim evidence, fenced verification output, and quoted mentions"
 }
 
 test_em_dash_check_scans_tracked_files_and_explicit_paths() {
