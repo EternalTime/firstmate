@@ -1625,6 +1625,104 @@ EOF
   printf '0'
 }
 
+# --- status outcome backstop decision ----------------------------------------
+#
+# The drain's STATUS OUTCOME BACKSTOP section and the watcher's worth-sending
+# recovery test (docs/watcher-continuity.md) must agree exactly on whether a
+# task's latest event is owed: a watcher that counts an event the drain then
+# skips wakes firstmate into a drain that prints nothing. So the per-task
+# decision has this one owner, and both callers consume its verdict.
+# bin/fm-branch-outcome.sh owns the per-task coverage index format read here.
+FM_BRANCH_OUTCOME_INDEX_VERSION=fm-branch-outcome-index-v1
+FM_BRANCH_OUTCOME_INDEX_MAX_BYTES=512
+FM_BRANCH_OUTCOME_INDEX_STATE=ok
+FM_BRANCH_OUTCOME_INDEX_ENDPOINT=
+FM_BRANCH_OUTCOME_INDEX_IDENT=
+
+# 0 when the store's index-ready marker says every per-task index is current.
+status_branch_outcome_index_ready_ok() {  # <ready-path>
+  local seq
+  [ -f "$1" ] && [ -r "$1" ] && [ ! -L "$1" ] || return 1
+  seq=$(LC_ALL=C command cat "$1" 2>/dev/null) || return 1
+  case "$seq" in ''|*[!0-9]*) return 1 ;; esac
+  return 0
+}
+
+# Load one task's branch outcome coverage index into FM_BRANCH_OUTCOME_INDEX_*.
+# An absent index is state ok with no endpoint; an unsafe one is state invalid.
+# shellcheck disable=SC2034 # Output globals are consumed by sourcing scripts.
+status_branch_outcome_index_load() {  # <state> <task>
+  local state=$1 task=$2 path data version seq endpoint ident extra size
+  FM_BRANCH_OUTCOME_INDEX_STATE=ok
+  FM_BRANCH_OUTCOME_INDEX_ENDPOINT=
+  FM_BRANCH_OUTCOME_INDEX_IDENT=
+  case "$task" in ''|*[!A-Za-z0-9._-]*) return 0 ;; esac
+  path="$state/.$task.branch-outcome-index"
+  [ -e "$path" ] || [ -L "$path" ] || return 0
+  if [ ! -f "$path" ] || [ ! -r "$path" ] || [ -L "$path" ]; then
+    FM_BRANCH_OUTCOME_INDEX_STATE=invalid
+    return 0
+  fi
+  size=$(_fm_status_file_size "$path") || { FM_BRANCH_OUTCOME_INDEX_STATE=invalid; return 0; }
+  size=${size//[[:space:]]/}
+  case "$size" in ''|*[!0-9]*) FM_BRANCH_OUTCOME_INDEX_STATE=invalid; return 0 ;; esac
+  if [ "$size" -gt "$FM_BRANCH_OUTCOME_INDEX_MAX_BYTES" ]; then
+    FM_BRANCH_OUTCOME_INDEX_STATE=invalid
+    return 0
+  fi
+  data=$(LC_ALL=C command cat "$path" 2>/dev/null) \
+    || { FM_BRANCH_OUTCOME_INDEX_STATE=invalid; return 0; }
+  case "$data" in *$'\n'*) FM_BRANCH_OUTCOME_INDEX_STATE=invalid; return 0 ;; esac
+  IFS=$(printf '\t') read -r version seq endpoint ident extra <<EOF
+$data
+EOF
+  if [ "$version" != "$FM_BRANCH_OUTCOME_INDEX_VERSION" ] || [ -n "$extra" ]; then
+    FM_BRANCH_OUTCOME_INDEX_STATE=invalid
+    return 0
+  fi
+  case "$seq:$endpoint" in *[!0-9:]*) FM_BRANCH_OUTCOME_INDEX_STATE=invalid; return 0 ;; esac
+  [ -n "$seq" ] && [ -n "$endpoint" ] && [ -n "$ident" ] \
+    && [ "${#seq}" -le 16 ] && [ "${#endpoint}" -le 16 ] \
+    && [ "$seq" -le 9007199254740991 ] && [ "$endpoint" -le 9007199254740991 ] \
+    || { FM_BRANCH_OUTCOME_INDEX_STATE=invalid; return 0; }
+  FM_BRANCH_OUTCOME_INDEX_ENDPOINT=$endpoint
+  FM_BRANCH_OUTCOME_INDEX_IDENT=$ident
+}
+
+# Decide whether the backstop owes one snapshot row's latest event.
+# Returns 0 when it does (FM_STATUS_SNAPSHOT_EVENT_* name the event), 1 when it
+# owes nothing, 2 when the backstop receipt cannot be read, and 3 when the
+# task's coverage index cannot be read safely. Strictly read-only.
+status_outcome_backstop_event() {  # <state> <task> <captured-endpoint> <captured-identity>
+  local state=$1 task=$2 endpoint=$3 ident=$4 receipt event key
+  receipt=$(status_outcome_backstop_cursor_offset "$state/$task.status") || return 2
+  [ "$receipt" -lt "$endpoint" ] || return 1
+  status_snapshot_latest_event "$state/$task.status" "$endpoint" "$ident" || return 1
+  [ "$receipt" -lt "$FM_STATUS_SNAPSHOT_EVENT_ENDPOINT" ] || return 1
+  event=$FM_STATUS_SNAPSHOT_EVENT_LINE
+  status_is_captain_relevant "$event" || return 1
+  case "$(status_line_verb "$event")" in
+    needs-decision|blocked)
+      key=$(_fm_decision_key "$event") || key=
+      # Parseable decisions belong exclusively to the durable fold. That
+      # includes reserved-key transitions the fold rejects; resurfacing one
+      # here would let a foreign writer bypass the namespace guard. A line
+      # with malformed key syntax has no fold representation, so the
+      # captain-facing backstop remains its only safe presentation path.
+      [ -z "$key" ] || return 1
+      ;;
+  esac
+  # A branch outcome recorded at or after this event already covers it.
+  status_branch_outcome_index_load "$state" "$task"
+  [ "$FM_BRANCH_OUTCOME_INDEX_STATE" = ok ] || return 3
+  if [ -n "$FM_BRANCH_OUTCOME_INDEX_ENDPOINT" ] \
+    && [ "$FM_BRANCH_OUTCOME_INDEX_IDENT" = "$ident" ] \
+    && [ "$FM_BRANCH_OUTCOME_INDEX_ENDPOINT" -ge "$FM_STATUS_SNAPSHOT_EVENT_ENDPOINT" ]; then
+    return 1
+  fi
+  return 0
+}
+
 status_signal_seen_marker_path() {  # <state> <task-id>
   printf '%s/.seen-%s' "$1" "$(printf '%s.status' "$2" | tr '.' '_')"
 }

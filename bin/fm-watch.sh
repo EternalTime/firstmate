@@ -2687,25 +2687,30 @@ fi
 # owners, cheapest first. Every scan is strictly read-only: the whole-file
 # decision fold is used rather than its incremental sibling because that sibling
 # writes a cursor the unread-status scan falls back to, which would let this
-# check blind the drain it is protecting. The backstop test skips the drain's
-# branch-outcome coverage index, so it can over-match (an extra wake) but never
-# under-match. Any scan failure answers true: an extra wake is cheap, and
-# silence about real supervision work is not.
+# check blind the drain it is protecting. The backstop test is the drain's own
+# per-task decision (status_outcome_backstop_event), so an event the drain
+# skips, such as a keyed decision or one a branch outcome already covers, never
+# wakes firstmate into a drain that prints nothing. Only an index rebuild the
+# drain would run first is beyond this read-only check, so that case answers
+# true, as does any scan failure: an extra wake is cheap, and silence about real
+# supervision work is not.
 recovery_has_presentable_work() {
-  local found task endpoint ident receipt
+  local found task endpoint ident store="$STATE/branch-outcomes.jsonl"
   [ ! -s "$FM_WAKE_QUEUE" ] || return 0
   found=$(scan_unread_surface_lines "$STATE") || return 0
   [ -z "$found" ] || return 0
   found=$(scan_open_decisions "$STATE") || return 0
   [ -z "$found" ] || return 0
   found=$(status_presentation_snapshot "$STATE") || return 0
+  [ -n "$found" ] || return 1
+  if [ -e "$store" ] || [ -L "$store" ]; then
+    [ -f "$store" ] && [ -r "$store" ] && [ ! -L "$store" ] || return 0
+    status_branch_outcome_index_ready_ok "$STATE/.branch-outcome-index-ready" || return 0
+  fi
   while IFS=$(printf '\t') read -r task endpoint ident; do
     [ -n "$task" ] || continue
-    receipt=$(status_outcome_backstop_cursor_offset "$STATE/$task.status") || return 0
-    [ "$receipt" -lt "$endpoint" ] || continue
-    status_snapshot_latest_event "$STATE/$task.status" "$endpoint" "$ident" || continue
-    [ "$receipt" -lt "$FM_STATUS_SNAPSHOT_EVENT_ENDPOINT" ] || continue
-    status_is_captain_relevant "$FM_STATUS_SNAPSHOT_EVENT_LINE" && return 0
+    status_outcome_backstop_event "$STATE" "$task" "$endpoint" "$ident"
+    [ "$?" -eq 1 ] || return 0
   done <<HERE
 $found
 HERE

@@ -239,7 +239,8 @@ Retiring the episode is a separate best-effort step on top of that silence, and 
 That covers a downtime generation the choosing arm check has already marked announced as well as a pending one, since an announced generation no wake carried would otherwise read as a recovery still owed.
 A watcher close publishes downtime, so without that test a torn-down fleet re-arms into an episode whose one announcement delivers a recovery wake that finds nothing.
 The watcher reads those sources read-only and never advances the presentation cursor.
-Its backstop check skips the drain's branch-outcome coverage index, so it can only over-report, and any failure to read a source is treated as work present, because a redundant wake costs a turn while a suppressed one costs the work.
+Its backstop check is the drain's own per-task decision (`status_outcome_backstop_event` in `bin/fm-classify-lib.sh`), so an event the drain skips, such as a keyed decision or one a branch outcome already covers, never produces a wake that presents nothing.
+Only a coverage-index rebuild the drain would run first is beyond the read-only check, and that case, like any failure to read a source, is treated as work present, because a redundant wake costs a turn while a suppressed one costs the work.
 
 ### Generation reuse
 
