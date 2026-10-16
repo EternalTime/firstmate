@@ -331,6 +331,7 @@ A board reconcile runs only when the captain asks for it, so it cannot keep a st
 
 Re-holding released work writes a new hold-set stamp, so a check from an earlier lifecycle never makes the new call fresh.
 `bin/fm-bearings-board.sh build` asks `recheck due` for every decision card that survives hygiene and refuses the whole build, naming every due id, before the existing board is touched.
+It also refuses when `recheck due` cannot decide.
 
 ## Words the captain told a worker directly
 
@@ -661,9 +662,11 @@ That suite drives its Lavish session through a protocol-shaped stub.
 `tests/fm-captain-hold-lifecycle.test.sh` proves:
 
 - A new hold is due, a recheck note makes it fresh, a check older than the window or one from before a re-hold is due again, and closed or absent tasks are never due.
+- An invalid recheck window makes `recheck due` exit 2 instead of reporting an answer.
 - A recheck close records the evidence under the reconciled label, closes the call, and retires a pending board request without needing one.
 - `direct pending` follows the worker's record through routing and a later append.
 - Cleanup refuses an unrouted record even with `--force`, and proceeds once it is routed.
+- A record that is not a regular file makes `direct pending` exit 2 and cleanup refuse because it cannot tell.
 
 `tests/fm-bearings-board.test.sh` proves a build with a due decision card refuses before the board is written.
 `tests/fm-brief.test.sh` proves crewmate and scout briefs carry the direct-words rule and a secondmate charter does not.
