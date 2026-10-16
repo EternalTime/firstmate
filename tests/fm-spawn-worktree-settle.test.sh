@@ -4,10 +4,11 @@
 #
 # On some tmux/WSL setups a brand-new window's pane_current_path transiently
 # reports a stale, unrelated-but-real path on the very first poll, before the
-# pane actually settles into the worktree treehouse get moved it to. That stale
-# path still passes the loop's "differs from the project" check and
-# validate_spawn_worktree's "is a real, distinct worktree" check (it IS a real
-# git checkout, just the wrong one), so a naive single-read loop silently
+# pane actually settles into the worktree treehouse get moved it to. When that
+# stale path is another linked worktree of the same clone it still passes the
+# loop's "differs from the project" check and validate_spawn_worktree's "is a
+# real, distinct worktree" check (it IS a real git checkout, just the wrong
+# one), so a naive single-read loop silently
 # records the wrong worktree= in state/<id>.meta. This test simulates that
 # transient-then-settled pane_current_path sequence with a fake tmux and
 # asserts the recorded worktree resolves to the real, settled worktree, never
@@ -19,6 +20,12 @@
 # comparing only against the project adopted it and the isolation guard then
 # refused the launch. The cases below cover both the transient and the pane
 # that never leaves the primary at all.
+#
+# A pool is keyed by the repository it serves, so two homes holding clones of
+# the same project share one pool, and a slot cut from the other home's clone
+# is a real, distinct worktree as well. Its work would land in that other
+# clone, so the last cases assert such a slot is never adopted: a transient
+# read of one is waited out, and a pane that stays in one is refused.
 set -u
 
 # shellcheck source=tests/fixtures.sh
@@ -66,10 +73,11 @@ SH
 }
 
 # make_settle_case <name> <id> <stale_reads> builds a home, a primary project
-# with a real worktree (the eventual settled path), and a separate real git
-# repo standing in for the stale path (a real checkout of something else
-# entirely, distinct from both the project and the worktree - mirroring the
-# live incident where the stale read was another real firstmate home).
+# with a real worktree (the eventual settled path), and a second linked
+# worktree of the same project standing in for the stale path (a real
+# checkout distinct from both the project and the worktree that the isolation
+# predicate alone accepts - mirroring the live incident where the stale read
+# was another real firstmate home linked to the same repository).
 make_settle_case() {
   local name=$1 id=$2 stale_reads=$3 case_dir home proj wt stale fakebin countfile
   case_dir="$TMP_ROOT/$name"
@@ -82,7 +90,7 @@ make_settle_case() {
   mkdir -p "$home/data" "$home/projects" "$home/state" "$home/config"
   printf 'codex\n' > "$home/config/crew-harness"
   fm_git_worktree "$proj" "$wt" "wt-$name"
-  fm_git_init_commit "$stale"
+  git -C "$proj" worktree add --quiet -b "stale-$name" "$stale"
   mkdir -p "$home/data/$id"
   cat > "$home/data/$id/brief.md" <<EOF
 # Task
@@ -221,9 +229,76 @@ test_primary_checkout_that_never_settles_fails_at_the_deadline() {
   pass "a pane stuck on the primary checkout fails loudly at the deadline"
 }
 
+# make_foreign_clone_case <name> <id> <stale_reads> builds two homes' clones
+# of one origin: the spawning project with its own linked worktree (the
+# eventual settled path), and a second clone of the same origin with a linked
+# worktree of its own standing in for the pool slot cut from the other home's
+# clone.
+make_foreign_clone_case() {
+  local name=$1 id=$2 stale_reads=$3 case_dir home proj wt other foreign fakebin countfile
+  case_dir="$TMP_ROOT/$name"
+  home="$case_dir/home"
+  proj="$case_dir/project"
+  wt="$case_dir/wt"
+  other="$case_dir/other-home-clone"
+  foreign="$case_dir/other-home-slot"
+  countfile="$case_dir/pane-call-count"
+  fakebin=$(make_settle_fakebin "$case_dir/fake")
+  fm_test_spawn_home "$home" codex
+  fm_git_worktree "$proj" "$wt" "wt-$name"
+  git -C "$proj" push --quiet origin HEAD:refs/heads/main
+  git clone --quiet "$proj.origin.git" "$other"
+  git -C "$other" worktree add --quiet --detach "$foreign"
+  fm_test_spawn_brief "$home" "$id" "Exercise other-clone slot detection for $id."
+  printf '%s\n' "$case_dir|$home|$proj|$wt|$foreign|$fakebin|$countfile|$stale_reads"
+}
+
+# A pane that briefly reports a slot cut from the other home's clone before
+# settling into the spawning clone's own slot lands on its own slot.
+test_transient_other_clone_slot_is_not_accepted() {
+  local rec id out status
+  id=settle-other-clone-transient-z5
+  rec=$(make_foreign_clone_case settle-other-clone-transient "$id" 3)
+  read_settle_record "$rec"
+  fm_test_fake_sleep_noop "$FAKEBIN_DIR"
+
+  out=$(run_settle_spawn "$id")
+  status=$?
+  expect_code 0 "$status" "spawn should succeed once the pane leaves the other clone's slot"$'\n'"$out"
+  assert_grep "worktree=$WT_DIR" "$HOME_DIR/state/$id.meta" \
+    "meta did not record the spawning clone's own worktree"
+  assert_no_grep "worktree=$STALE_DIR" "$HOME_DIR/state/$id.meta" \
+    "meta wrongly recorded a slot of the other home's clone as the worktree"
+  pass "a transient read of another clone's slot is not accepted as the worktree"
+}
+
+# A pane that stays in a slot cut from the other home's clone is refused, names
+# that slot and why, and publishes no task record, so no work lands there.
+test_other_clone_slot_is_refused() {
+  local rec id out status
+  id=settle-other-clone-stuck-z6
+  rec=$(make_foreign_clone_case settle-other-clone-stuck "$id" 100000)
+  read_settle_record "$rec"
+  fm_test_fake_sleep_noop "$FAKEBIN_DIR"
+
+  out=$(run_settle_spawn "$id")
+  status=$?
+  [ "$status" -ne 0 ] || fail "spawn accepted a slot cut from another home's clone"$'\n'"$out"
+  assert_contains "$out" "did not enter an isolated worktree" \
+    "spawn did not explain that the pane never reached an isolated worktree"
+  assert_contains "$out" "$STALE_DIR" \
+    "the refusal did not name the slot the pane kept reporting"
+  assert_contains "$out" "worktree of another clone" \
+    "the refusal did not say the slot belongs to another clone"
+  [ ! -e "$HOME_DIR/state/$id.meta" ] || fail "refused spawn published task metadata"
+  pass "a slot cut from another home's clone is refused"
+}
+
 test_single_stale_first_read_is_not_accepted
 test_already_settled_pane_costs_one_confirm_read
 test_transient_primary_checkout_is_not_accepted
 test_primary_checkout_that_never_settles_fails_at_the_deadline
+test_transient_other_clone_slot_is_not_accepted
+test_other_clone_slot_is_refused
 
 echo "# all fm-spawn-worktree-settle tests passed"
