@@ -1,0 +1,3 @@
+### WITHOUT fix f4821dc (bin/fm-watch.sh retires only pending:downtime)
+not ok - re-arm 2 over an empty fleet left its empty recovery episode unretired: announced:downtime:74430.1792129151.9PNONP
+exit=

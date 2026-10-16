@@ -1,0 +1,32 @@
+## settings.json UserPromptSubmit entries: 1 (hooks in entry: 2); duplicate-key check via python:
+no duplicate JSON keys
+
+Registered command: [ -z "${GROK_AGENT:-}${GROK_HOOK_EVENT:-}" ] || exit 0; "$CLAUDE_PROJECT_DIR"/bin/fm-plainenglish-hook.sh || true; exit 0
+
+$ [normal mode, primary home]
+exit=0 stdout=[plain-english] Answer the captain in one paragraph of at most two sentences that leads with the ask or the answer, keeping evidence, options, and detail in a file or task note rather than in the message. An escalation keeps that shape while still leading with the evidence and consequence that let it stand alone, an /updatethecaptain worker report keeps its own per-worker format, and the plainenglish skill owns the full contract.
+
+$ [quiet mode (state/.afk first line 'quiet')]
+exit=0 stdout=[plain-english] Answer the captain in one paragraph of at most two sentences that leads with the ask or the answer, keeping evidence, options, and detail in a file or task note rather than in the message. An escalation keeps that shape while still leading with the evidence and consequence that let it stand alone, an /updatethecaptain worker report keeps its own per-worker format, and the plainenglish skill owns the full contract.
+
+$ [away mode (state/.afk first line 'away')]
+exit=0 stdout=<empty>
+
+$ [away mode (empty state/.afk)]
+exit=0 stdout=<empty>
+
+$ [config/plainenglish = OFF]
+exit=0 stdout=<empty>
+
+$ [sabotaged hook that exits 2 (must not block prompt)]
+exit=0 stdout=<empty>
+
+$ [hook script missing]
+bash: line 1: /tmp/fmhome.KKrk/bin/fm-plainenglish-hook.sh: No such file or directory
+exit=0 stdout=<empty>
+
+## .afk written by the product's own fm_afk_flag_write (bin/fm-afk-start.sh)
+mode=quiet file=quiet 1792129062 
+  hook exit=0 stdout=REMINDER PRINTED[plain-english] Answer the captain in one paragraph of at most two sentences that leads with the ask or the answer, keeping evidence, options, and detail in a file or task note rather than in the message. An escalation keeps that shape while still leading with the evidence and consequence that let it stand alone, an /updatethecaptain worker report keeps its own per-worker format, and the plainenglish skill owns the full contract.
+mode=away file=away 1792129065 
+  hook exit=0 stdout=<empty>

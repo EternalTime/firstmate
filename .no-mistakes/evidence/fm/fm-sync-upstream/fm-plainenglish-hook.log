@@ -1,0 +1,8 @@
+ok - the reminder reaches a primary turn as one line and exits 0
+ok - the hook writes nothing into the home
+ok - config/plainenglish=off silences the reminder and every other value keeps it
+ok - the reminder is silent while away mode is active, stays on in quiet mode, and returns after away mode
+ok - the reminder is inert in a crewmate worktree and live in a secondmate home
+ok - the reminder is inert for a no-mistakes gate agent
+ok - the hook ignores the payload shape and exits 0 either way
+ok - the registered command survives a syntax error, an exit 2, and a missing script

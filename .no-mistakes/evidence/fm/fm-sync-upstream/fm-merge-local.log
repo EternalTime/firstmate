@@ -1,0 +1,22 @@
+ok - an approved landing carries the change into the project's own folder
+ok - a repeated landing converges instead of refusing or re-merging
+ok - landing refuses when uncommitted work sits on a path it would change
+ok - landing refuses when an untracked file would be overwritten
+ok - landing refuses a folder that is not on the project's default branch
+ok - landing refuses rather than forcing when the folder has its own commits
+ok - landing refuses an origin that is not a work-tree root
+ok - landing refuses when the origin folder is gone
+ok - a local-only project with no origin lands in its clone and says so
+ok - a bare origin has no working copy, so the landing ends at the clone and says so
+ok - an origin on another host is not a folder to carry into, and the landing says so
+ok - the local landing path still refuses any task that is not local-only
+ok - landing refuses when a gitignored file sits on a path it would overwrite
+ok - an ignored file outside the landing's paths does not refuse the carry
+ok - a landing that only adds a file inside a wholly-ignored directory goes through
+ok - an ignored file that is really there still refuses, named path and all
+ok - an ignored file standing where the landing needs a directory refuses the carry
+ok - an origin spelled relative to the clone is anchored and landed into
+ok - a tilde-spelled origin expands against the invoking user's home and lands
+ok - a path-shaped origin that resolves to nothing refuses instead of reporting
+ok - an origin folder whose path holds a space is landed into like any other
+ok - an anchored origin that is not a plain absolute path refuses naming the fault

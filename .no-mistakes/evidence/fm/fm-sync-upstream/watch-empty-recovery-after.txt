@@ -1,0 +1,4 @@
+### WITH fix (target commit)
+ok - watch-arm: an empty fleet re-arms silently instead of resurfacing nothing
+ok - watch-arm: a watcher reclaiming a stale lock resurfaces only real work
+exit=

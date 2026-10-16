@@ -1,0 +1,12 @@
+ok - arm publishes a registered, watcher-dispatchable timer check
+ok - status reports the armed cadence and disarm removes every artifact
+ok - disarm is harmless and idempotent when no report loop is running
+ok - the timer prints nothing until its full interval has elapsed
+ok - each elapsed interval produces exactly one wake line
+ok - arming with no interval reports on the ten-minute cadence the captain asked for
+ok - re-arming restarts the wait so an immediate report is not repeated
+ok - re-arming at a new interval rewrites the check the watcher actually runs
+ok - an out-of-range or non-numeric interval is refused without arming anything
+ok - a timer check whose bytes changed is no longer trusted or reported as armed
+ok - a timer check with no stamp stays silent instead of waking on every sweep
+ok - a due timer reaches the durable wake queue through a real watcher, once
