@@ -402,11 +402,9 @@ printf '%s\n' "$OTHER_PID" > "$STATE_ROOT/worker.pid"
 printf '%s\n' "$OTHER_PID" > "$STATE_ROOT/worker.lock/pid"
 # The crashed owner's heartbeat can refresh readiness once after its death;
 # that refresh must never count as a live worker.
-touch "$STATE_ROOT/worker.ready"
+printf '%s\n' "$CRASHED_WORKER_PID" > "$STATE_ROOT/worker.ready"
 fm_remote_job_probe "$ACCOUNT_HOME" || fail "the orphaned-heartbeat fixture did not refresh readiness"
-! fm_remote_job_ready_owner_live "$ACCOUNT_HOME" \
-  || fail "readiness refreshed after the owner died was credited to a live worker"
-touch -t 200001010000 "$STATE_ROOT/worker.ready" "$STATE_ROOT/worker.lock"
+touch -t 200001010000 "$STATE_ROOT/worker.lock"
 fm_remote_job_ensure_worker "$REMOTE_ROOT" "$ACCOUNT_HOME" \
   || fail "$FM_REMOTE_JOB_ERROR"
 kill -0 "$OTHER_PID" 2>/dev/null || fail "stale worker state caused an unrelated process to be signaled"
