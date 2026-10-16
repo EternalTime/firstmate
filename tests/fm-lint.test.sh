@@ -1238,6 +1238,7 @@ fm_lint_em_dash_repo() {
   printf '%s\n' "$lint_copy"
 }
 
+# shellcheck disable=SC2016 # The Markdown fixtures print literal backticks and "$".
 test_rejects_em_dashes_outside_verbatim_evidence() {
   local tmp fakebin log lint_copy dash exempt out rc
   tmp=$(fm_test_tmproot fm-lint-em-dash)
