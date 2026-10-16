@@ -1,0 +1,135 @@
+# Lab home: /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.O1Ere0
+config
+data
+projects
+state
+
+## Setup: queue and dispatch a no-mistakes ship task, then record its open PR
+$ bin/fm-tasks-axi.sh add fm-pr-open Ship a firstmate fix through no-mistakes --kind ship
+ok: added fm-pr-open (ship) -> Queued
+task:
+  id: fm-pr-open
+  title: Ship a firstmate fix through no-mistakes
+  state: queued
+  blocked: no
+  blocked_by: none
+  held: no
+  hold_reason: "-"
+  hold_kind: "-"
+  hold_until: "-"
+  kind: ship
+  repo: "-"
+  priority: "-"
+  created: 2026-10-16
+  closed: "-"
+  deps: none
+  links: none
+  body: ""
+help[2]:
+  - Run `tasks-axi start fm-pr-open` to move it to in flight
+  - Run `tasks-axi block fm-pr-open --by <other>` to record a dependency
+[exit 0]
+$ bin/fm-tasks-axi.sh start fm-pr-open
+ok: start fm-pr-open -> In flight
+help[1]:
+  - Run `tasks-axi done fm-pr-open --pr <url>` when it ships
+[exit 0]
+state/fm-pr-open.meta:
+kind=ship
+mode=no-mistakes
+branch=fm/fm-pr-open
+pr=https://github.com/EternalTime/firstmate/pull/999
+
+## Scenario 1: hand-run done on the day the PR opens (PR still open, record present)
+$ bin/fm-tasks-axi.sh done fm-pr-open --pr https://github.com/EternalTime/firstmate/pull/999
+fm-tasks-axi: fm-pr-open still has a task record at /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.O1Ere0/state/fm-pr-open.meta, so its work may not have landed yet; bin/fm-teardown.sh fm-pr-open closes the row once the work is in the branch this home follows
+[exit 2]
+
+## Scenario 2: adversarial spellings
+$ bin/fm-tasks-axi.sh close fm-pr-open
+fm-tasks-axi: fm-pr-open still has a task record at /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.O1Ere0/state/fm-pr-open.meta, so its work may not have landed yet; bin/fm-teardown.sh fm-pr-open closes the row once the work is in the branch this home follows
+[exit 2]
+$ bin/fm-tasks-axi.sh done --json fm-pr-open
+fm-tasks-axi: fm-pr-open still has a task record at /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.O1Ere0/state/fm-pr-open.meta, so its work may not have landed yet; bin/fm-teardown.sh fm-pr-open closes the row once the work is in the branch this home follows
+[exit 2]
+$ bin/fm-tasks-axi.sh done fm-pr-open --note landed --keep 3
+fm-tasks-axi: fm-pr-open still has a task record at /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.O1Ere0/state/fm-pr-open.meta, so its work may not have landed yet; bin/fm-teardown.sh fm-pr-open closes the row once the work is in the branch this home follows
+[exit 2]
+$ bin/fm-tasks-axi.sh done --report data/fm-pr-open/report.md fm-pr-open
+fm-tasks-axi: fm-pr-open still has a task record at /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.O1Ere0/state/fm-pr-open.meta, so its work may not have landed yet; bin/fm-teardown.sh fm-pr-open closes the row once the work is in the branch this home follows
+[exit 2]
+
+## Backlog after all refusals (row must still be In flight):
+# Backlog
+
+## In flight
+- [ ] fm-pr-open - Ship a firstmate fix through no-mistakes (kind: ship) (since 2026-10-16)
+## Queued
+## Done
+$ bin/fm-tasks-axi.sh show fm-pr-open
+task:
+  id: fm-pr-open
+  title: Ship a firstmate fix through no-mistakes
+  state: in_flight
+  blocked: no
+  blocked_by: none
+  held: no
+  hold_reason: "-"
+  hold_kind: "-"
+  hold_until: "-"
+  kind: ship
+  repo: "-"
+  priority: "-"
+  created: 2026-10-16
+  closed: "-"
+  deps: none
+  links: none
+  body: ""
+[exit 0]
+
+## Scenario 3: never-dispatched queued item still closes by hand
+$ bin/fm-tasks-axi.sh add plain-chore A captain chore with no dispatch
+ok: added plain-chore -> Queued
+task:
+  id: plain-chore
+  title: A captain chore with no dispatch
+  state: queued
+  blocked: no
+  blocked_by: none
+  held: no
+  hold_reason: "-"
+  hold_kind: "-"
+  hold_until: "-"
+  kind: task
+  repo: "-"
+  priority: "-"
+  created: 2026-10-16
+  closed: "-"
+  deps: none
+  links: none
+  body: ""
+help[2]:
+  - Run `tasks-axi start plain-chore` to move it to in flight
+  - Run `tasks-axi block plain-chore --by <other>` to record a dependency
+[exit 0]
+$ bin/fm-tasks-axi.sh done plain-chore
+ok: done plain-chore -> Done
+help[1]:
+  - Run `tasks-axi ready` to dispatch work unblocked by this
+[exit 0]
+
+## Scenario 4: once cleanup has removed the task record, done passes through (cleanup's own close path)
+$ bin/fm-tasks-axi.sh done fm-pr-open --pr https://github.com/EternalTime/firstmate/pull/999
+ok: done fm-pr-open -> Done (pr https://github.com/EternalTime/firstmate/pull/999)
+help[1]:
+  - Run `tasks-axi ready` to dispatch work unblocked by this
+[exit 0]
+
+## Final backlog:
+# Backlog
+
+## In flight
+## Queued
+## Done
+- [x] fm-pr-open - Ship a firstmate fix through no-mistakes https://github.com/EternalTime/firstmate/pull/999 (kind: ship) (merged 2026-10-16)
+- [x] plain-chore - A captain chore with no dispatch (done 2026-10-16)
