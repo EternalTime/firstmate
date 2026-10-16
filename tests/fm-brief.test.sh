@@ -1787,6 +1787,59 @@ test_crewmate_scaffolds_forbid_pool_administration() {
   pass "fm-brief.sh: every crewmate scaffold forbids administering the shared worktree pool"
 }
 
+test_crewmate_scaffolds_announce_visible_surfaces() {
+  local home id brief mode ship_rule scout_rule
+  home="$TMP_ROOT/screen-home"
+  mkdir -p "$home/data"
+
+  for mode in no-mistakes direct-PR local-only; do
+    id="brief-screen-$mode"
+    FM_HOME="$home" "$ROOT/bin/fm-brief.sh" "$id" alpha --mode "$mode" >/dev/null 2>&1 \
+      || fail "fm-brief.sh --mode $mode exited non-zero"
+    brief="$home/data/$id/brief.md"
+    assert_grep "application window, simulator, emulator, browser" "$brief" \
+      "$mode ship brief did not name the visible surfaces that need an announcement"
+    # shellcheck disable=SC2016 # Literal backticks and braces must remain unexpanded.
+    assert_grep 'needs-decision [at=<epoch>] [key=screen-<slug>]: about to open {what}' "$brief" \
+      "$mode ship brief did not require a keyed announcement before the surface opens"
+    # shellcheck disable=SC2016 # Literal backticks and braces must remain unexpanded.
+    assert_grep "note [at=<epoch>]: {what} closed, or left open and the captain's to use" "$brief" \
+      "$mode ship brief did not require announcing the surface's release"
+    assert_grep "and carry on without waiting." "$brief" \
+      "$mode ship brief made the surface's release block the worker"
+    assert_no_grep "key=screen-<slug>-free" "$brief" \
+      "$mode ship brief still holds the worker on a keyed release decision"
+    assert_grep "Headless runs" "$brief" \
+      "$mode ship brief did not exempt headless runs"
+  done
+
+  # The opening announcement must reach firstmate as a captain-relevant event,
+  # not be absorbed as routine progress, or the window appears unannounced.
+  bash -c '. "$1"; status_is_captain_relevant "$2"' _ "$ROOT/bin/fm-classify-lib.sh" \
+    'needs-decision [at=1700000000] [key=screen-app-window]: about to open the app window on the captain'"'"'s screen for a smoke test; hands off until released' \
+    || fail "the screen announcement shape is not captain-relevant"
+  ! bash -c '. "$1"; status_prefix_unrecognized "$2"' _ "$ROOT/bin/fm-classify-lib.sh" \
+    'note [at=1700000000]: the app window left open and the captain'"'"'s to use' \
+    || fail "the screen release shape is not a recognized status line"
+
+  FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-screen-scout alpha --scout >/dev/null 2>&1 \
+    || fail "fm-brief.sh --scout exited non-zero"
+  brief="$home/data/brief-screen-scout/brief.md"
+  ship_rule=$(awk '/^8\. Never let a window appear/,/^$/' "$home/data/brief-screen-no-mistakes/brief.md")
+  scout_rule=$(awk '/^8\. Never let a window appear/,/^$/' "$brief")
+  [ -n "$ship_rule" ] || fail "ship brief emitted no screen-ownership rule to compare"
+  [ "$ship_rule" = "$scout_rule" ] \
+    || fail "ship and scout screen-ownership rules have drifted apart"
+
+  FM_SECONDMATE_CHARTER='Supervise the alpha domain.' \
+    FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-screen-mate --secondmate alpha >/dev/null 2>&1 \
+    || fail "fm-brief.sh --secondmate exited non-zero"
+  assert_no_grep "key=screen-<slug>" "$home/data/brief-screen-mate/brief.md" \
+    "secondmate charter must not inherit the worker screen-ownership rule"
+
+  pass "fm-brief.sh: every crewmate scaffold announces a visible surface before and after it is in use"
+}
+
 test_script_parses
 test_no_heredoc_in_command_substitution
 test_help_includes_entire_header
@@ -1829,3 +1882,4 @@ test_branch_prefix_is_refused_where_it_does_not_apply
 test_branch_prefix_value_is_validated
 test_branch_prefix_command_is_shell_safe
 test_crewmate_scaffolds_forbid_pool_administration
+test_crewmate_scaffolds_announce_visible_surfaces
