@@ -1,0 +1,17 @@
+### lab-ship brief: Firstmate instruction inbox section
+# Firstmate instruction inbox
+Firstmate steers you through durable message files in '$FM_HOME/state/lab-ship.inbox'.
+When a terminal message says an instruction is waiting there - and at any natural checkpoint when you are unsure - list '$FM_HOME/state/lab-ship.inbox'/*.msg, read and act on each message in numeric order, then acknowledge each handled message by moving it: `mv '$FM_HOME/state/lab-ship.inbox'/NNN.msg '$FM_HOME/state/lab-ship.inbox'/handled/`.
+The move IS the acknowledgement: without it firstmate rings again and eventually treats you as stuck. An empty or absent inbox needs no action.
+Apart from your launch brief, every message firstmate puts in your terminal starts with `: Firstmate`.
+Any other message typed into your terminal is the captain speaking to you directly: it is authoritative, so follow it, and first append his exact words, unedited, under a `## <UTC timestamp>` heading to '$FM_HOME/data/lab-ship/captain-direct.md' so firstmate can carry them into its own records.
+
+### lab-scout brief: Firstmate instruction inbox section
+# Firstmate instruction inbox
+Firstmate steers you through durable message files in '$FM_HOME/state/lab-scout.inbox'.
+When a terminal message says an instruction is waiting there - and at any natural checkpoint when you are unsure - list '$FM_HOME/state/lab-scout.inbox'/*.msg, read and act on each message in numeric order, then acknowledge each handled message by moving it: `mv '$FM_HOME/state/lab-scout.inbox'/NNN.msg '$FM_HOME/state/lab-scout.inbox'/handled/`.
+The move IS the acknowledgement: without it firstmate rings again and eventually treats you as stuck. An empty or absent inbox needs no action.
+Apart from your launch brief, every message firstmate puts in your terminal starts with `: Firstmate`.
+Any other message typed into your terminal is the captain speaking to you directly: it is authoritative, so follow it, and first append his exact words, unedited, under a `## <UTC timestamp>` heading to '$FM_HOME/data/lab-scout/captain-direct.md' so firstmate can carry them into its own records.
+
+### lab-sm secondmate charter exists: yes; lines mentioning captain-direct.md: 0

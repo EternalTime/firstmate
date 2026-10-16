@@ -1,0 +1,30 @@
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh hold layout-call --reason which layout?
+layout-call
+[exit 0]
+--- build before any recheck ---
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-bearings-board.sh build /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.OQ1Dor/board.json
+fm-bearings-board: refusing to show captain calls not yet rechecked against their project: layout-call- recheck each one (captain-hold-lifecycle) and build again
+[exit 1]
+board written? no
+--- adversarial: invalid recheck window makes the board refuse (cannot establish) ---
+
+$ env FM_CAPTAIN_RECHECK_MAX_AGE_HOURS=1.5 /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-bearings-board.sh build /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.OQ1Dor/board.json
+fm-bearings-board: cannot establish whether the Captain's Call decisions were rechecked
+[exit 1]
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh recheck note layout-call --note-file /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.OQ1Dor/note.txt
+still-open: layout-call
+[exit 0]
+--- build after recheck (proceeds past the recheck gate to the Lavish step) ---
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-bearings-board.sh build /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.OQ1Dor/board.json
+board: /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.OQ1Dor/.lavish/bearings-board.html
+lab stub: lavish-axi not contacted
+fm-bearings-board: cannot establish the board Lavish session
+[exit 1]
+board written? yes
+["layout-call"]
+
+lab removed

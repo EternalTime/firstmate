@@ -1,0 +1,125 @@
+=== Scenario A: held decision must be rechecked before it is shown ===
+
+$ env FM_CAPTAIN_HOLD_NOW=2026-10-16T00:00:00Z /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh hold layout-call --reason which layout?
+layout-call
+[exit 0]
+
+$ env FM_CAPTAIN_HOLD_NOW=2026-10-16T00:00:00Z /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh hold export-call --reason add the export?
+export-call
+[exit 0]
+
+$ env FM_CAPTAIN_HOLD_NOW=2026-10-16T01:00:00Z /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh recheck due layout-call export-call nosuch-call
+due: layout-call
+due: export-call
+absent: nosuch-call
+[exit 1]
+
+--- board build with unrechecked calls (board path: /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/.lavish/bearings-board.html) ---
+
+$ env FM_CAPTAIN_HOLD_NOW=2026-10-16T01:00:00Z /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-bearings-board.sh build /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/board.json
+fm-bearings-board: board data does not satisfy fm-bearings-board.v1: /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/board.json
+[exit 1]
+board file exists after refused build? no
+
+$ env FM_CAPTAIN_HOLD_NOW=2026-10-16T02:00:00Z /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh recheck note layout-call --note-file /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/note.txt
+still-open: layout-call
+[exit 0]
+
+$ env FM_CAPTAIN_HOLD_NOW=2026-10-16T02:00:00Z /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh recheck close export-call --evidence-file /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/ev.txt
+reconciled: export-call
+[exit 0]
+
+$ env FM_CAPTAIN_HOLD_NOW=2026-10-16T03:00:00Z /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh recheck due layout-call export-call
+fresh: layout-call rechecked=2026-10-16T02:00:00Z
+closed: export-call
+[exit 0]
+
+--- tasks-axi show export-call ---
+  state: done
+  body: "Resolution recorded by fm-captain-hold.\nDecision digest: 261be2d6cbd271212f63f0fc861c1e6a266f92b500ecd961bdd1ef2aa8b2403e\nResolution mode: reconciled\n\nReconciliation evidence:\nExport already shipped in src/export.sh on 2026-10-10."
+
+--- adversarial: stale (>24h) and invalid window ---
+
+$ env FM_CAPTAIN_HOLD_NOW=2026-10-17T03:00:00Z /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh recheck due layout-call
+due: layout-call
+[exit 1]
+
+$ env FM_CAPTAIN_RECHECK_MAX_AGE_HOURS=24h /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh recheck due layout-call
+fm-captain-hold: FM_CAPTAIN_RECHECK_MAX_AGE_HOURS must be a whole number of hours
+[exit 2]
+
+=== Scenario B: direct captain words routed before cleanup ===
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh complete scout-direct --none
+complete: scout-direct captain-call inventory reviewed
+[exit 0]
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh direct pending scout-direct
+[exit 1]
+--- adversarial: record is a directory ---
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh direct pending scout-direct
+fm-captain-hold: captain-direct record is not a regular file: /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/data/scout-direct/captain-direct.md
+[exit 2]
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-teardown.sh scout-direct
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  watcher supervision needs Stop-owned automatic recovery; inspect the hook registration and startup status before ending the turn.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+fm-captain-hold: captain-direct record is not a regular file: /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/data/scout-direct/captain-direct.md
+REFUSED: cannot tell whether task scout-direct's worker recorded words from the captain (/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/data/scout-direct/captain-direct.md).
+[exit 1]
+--- adversarial: record is a symlink ---
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh direct pending scout-direct
+fm-captain-hold: captain-direct record is not a regular file: /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/data/scout-direct/captain-direct.md
+[exit 2]
+--- worker records captain words ---
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh direct pending scout-direct
+/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/data/scout-direct/captain-direct.md
+[exit 0]
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-teardown.sh scout-direct
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+REFUSED: the captain spoke to task scout-direct's worker directly, and /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/data/scout-direct/captain-direct.md is not yet routed into firstmate's records.
+Route his words (captain-hold-lifecycle), then run bin/fm-captain-hold.sh direct routed scout-direct --note-file <path>.
+[exit 1]
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-teardown.sh scout-direct --force
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+REFUSED: the captain spoke to task scout-direct's worker directly, and /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/data/scout-direct/captain-direct.md is not yet routed into firstmate's records.
+Route his words (captain-hold-lifecycle), then run bin/fm-captain-hold.sh direct routed scout-direct --note-file <path>.
+[exit 1]
+meta still present: yes
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh direct routed scout-direct --note-file /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/routed.txt
+routed: scout-direct
+[exit 0]
+digest=3374362f185d8a752a497dc1d204c9598e8714dcecd22198f74109085e250032
+routed=2026-10-16T21:23:39Z
+Recorded the layout choice in the backlog intent for layout-call.
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh direct pending scout-direct
+[exit 1]
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh direct pending scout-direct
+/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/data/scout-direct/captain-direct.md
+[exit 0]
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-captain-hold.sh direct routed scout-direct --note-file /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/routed.txt
+routed: scout-direct
+[exit 0]
+
+$ /Users/owlshome/.no-mistakes/worktrees/5e738cfca1e1/01M538QF8TX24MGCCCWRRF0QGS/bin/fm-teardown.sh scout-direct
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+teardown scout-direct complete (window firstmate:fm-scout-direct, worktree /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x/projects/missing-scout-direct)
+Backlog: scout-direct is closed in /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.v2hy9x/data/backlog.md. Run bin/fm-tasks-axi.sh ready for dependency-cleared candidates, check date gates, and dispatch only work whose blockers are gone and date is due.
+[exit 0]
+meta after cleanup: removed; captain-direct.md: kept
+
+lab removed: /var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.v2hy9x
