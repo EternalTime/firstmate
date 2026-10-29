@@ -1,0 +1,3 @@
+ok - host+hook: a resurface main acknowledged before its hand-back parks the host again, so the next close still reaches main
+ok - host+hook: the next park takes over the cycle a main-only pass-through left, so one arm owns it
+bash tests/.zz-one.test.sh  4.96s user 8.73s system 66% cpu 20.453 total

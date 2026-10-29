@@ -1,0 +1,4 @@
+ok - host+hook: a resurface main acknowledged before its hand-back parks the host again, so the next close still reaches main
+ok - host+hook: the next park takes over the cycle a main-only pass-through left, so one arm owns it
+ok - host+hook: an attended main-only pass-through rewakes main and keeps its successor watcher
+ok - host+hook: a refused hand-back becomes a delivered failure notice

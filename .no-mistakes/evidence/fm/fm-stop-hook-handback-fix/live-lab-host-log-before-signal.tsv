@@ -1,0 +1,6 @@
+1793291275	start	gen=host-84255-1793291275	primary=claude
+1793291416	start	gen=host-87938-1793291416	primary=claude
+1793291570	start	gen=host-15910-1793291569	primary=claude
+1793291604	pass-through	attended	main-only	check: rearm-resurface
+1793291606	start	gen=host-46950-1793291606	primary=claude
+1793291606	take-over	arm=45609

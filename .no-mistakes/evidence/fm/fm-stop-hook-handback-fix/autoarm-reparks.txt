@@ -1,0 +1,4 @@
+ok - auto-arm: a host rewake refused on an acknowledged marker parks the host again and delivers its next close
+ok - auto-arm: a host rewake refused past the re-park bound delivers the failure notice
+ok - auto-arm: a lost host hand-back notifies once per failure episode
+ok - auto-arm: a host that stood down closes silently without a retry

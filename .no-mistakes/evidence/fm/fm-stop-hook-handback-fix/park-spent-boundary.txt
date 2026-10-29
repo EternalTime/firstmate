@@ -1,0 +1,2 @@
+ok - host: a re-park told 58s already spent ends at the 60s boundary (real clock)
+ok - host: control - a fresh park with no spent seconds is still parked after 5s

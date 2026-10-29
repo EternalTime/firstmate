@@ -1,0 +1,50 @@
+ ▐▛███▛█   Claude Code v2.1.286
+▝▜██████▀  Opus 5.5 (1M context) · Claude Max
+ ▝▝   ▝▝   /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.dovmqG/fm
+
+
+❯ Run exactly: bin/fm-lock.sh ; then end your turn with a one-line report. Do nothing else.
+
+⏺ Bash(bin/fm-lock.sh)
+  ⎿  lock acquired: harness pid 17011
+
+⏺ Captain, I ran bin/fm-lock.sh and it reported "lock acquired: harness pid 17011".
+
+✻ Sautéed for 7s · done 12:36 PM
+
+❯ Run bin/fm-wake-drain.sh, then run the exact WAKE_ACK_REQUIRED --ack-through command it prints (if any). Do not run anything else and do not arm any watcher. End your turn with a one-line report.
+
+⏺ Bash(bin/fm-wake-drain.sh)
+  ⎿  OPEN DECISIONS (still open, folded from the durable status logs - not just the latest line):
+     demo needs-decision: which region?
+     held [key=live-race] needs-decision: fixture is held for a decision
+     … +2 lines (ctrl+o to expand)
+
+⏺ Bash(bin/fm-wake-drain.sh --ack-through 0 --recovery-generation live-race-base)
+  ⎿  (No output)
+
+⏺ Captain, the queue had no new notifications and the acknowledgement went through with no output, but two decisions are still open: "which region?" on the demo task and the held fixture decision.
+
+✻ Sautéed for 6s · done 12:36 PM
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ 
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  context [#.........] 6%  56k of 1.0M
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← 1 agent
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

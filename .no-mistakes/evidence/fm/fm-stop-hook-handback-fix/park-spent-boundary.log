@@ -1,0 +1,4 @@
+spent-near-boundary (PARK_SPENT=57, PARK_SECONDS=60): park ended after 3s rc=0
+supervision-host: cycle boundary - the host ended its park at its bound; drain, acknowledge, and end the turn, and the next park starts on its own
+  watcher stopped
+spent-zero (PARK_SPENT=0, PARK_SECONDS=60): park still running after 20s (boundary not yet reached)
