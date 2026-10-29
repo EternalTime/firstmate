@@ -1,0 +1,31 @@
+### BASE commit 9547f0c (before fix)
+== lab /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.eamyCH; windows:
+lab:fm-scout1 pane=%0
+== meta:
+window=lab:fm-scout1
+endpoint_task_id=scout1
+backend=tmux
+kind=scout
+worktree=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.eamyCH/wt-scout1
+project=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.eamyCH/projects/demo
+== 16:32:29 watcher running, stale count=0; output so far: []
+== 16:32:29 worker wrote done status
+== 16:32:33 running bin/fm-teardown.sh scout1 --force (inside lab, during the 15s signal grace)
+== teardown output:
+teardown scout1 complete (window lab:fm-scout1, worktree /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.eamyCH/wt-scout1)
+Backlog: scout1 just finished (this home keeps no markdown backlog at /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.eamyCH/data/backlog.md). Update /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.eamyCH/data/backlog.md - move scout1 to Done, keep Done to the 10 most recent, then re-scan Queued and dispatch only work whose blockers are gone and date is due.
+teardown-exit=0
+== windows after teardown:
+lab:watcher
+== state after teardown:
+.count-lab_fm-scout1
+.hash-lab_fm-scout1
+== 16:32:35 observing watcher for 30s (grace expiry + ~13 polls)
+== 16:33:06 watcher output: [signal: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.eamyCH/state/scout1.status
+watcher-exit=0]
+== watcher alive: sleep
+== wake queue:
+1793305966	1	signal	scout1.status	signal: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.eamyCH/state/scout1.status
+== hash/count files for the old pane:
+.count-lab_fm-scout1
+.hash-lab_fm-scout1

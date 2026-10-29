@@ -1,0 +1,19 @@
+== lab /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.v3avUJ; windows:
+lab:fm-scout1 pane=%0
+== meta:
+window=lab:fm-scout1
+endpoint_task_id=scout1
+backend=tmux
+kind=scout
+worktree=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.v3avUJ/wt-scout1
+project=/private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.v3avUJ/projects/demo
+== 16:33:17 watcher running, stale count=0; output so far: []
+== 16:33:17 worker wrote done status
+== 16:33:41 watcher output: [signal: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.v3avUJ/state/scout1.status
+watcher-exit=0]
+== watcher alive: sleep
+== wake queue:
+1793306016	1	signal	scout1.status	signal: /private/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T/fm-lab.v3avUJ/state/scout1.status
+== hash/count files for the old pane:
+.count-lab_fm-scout1
+.hash-lab_fm-scout1

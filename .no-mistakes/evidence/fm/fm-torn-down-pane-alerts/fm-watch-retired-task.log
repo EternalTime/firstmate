@@ -1,0 +1,5 @@
+ok - pane scan discards a task retired during capture
+ok - signal grace discards a task retired after the initial scan
+ok - live task still surfaces stale
+ok - live task still surfaces signal
+exit=0

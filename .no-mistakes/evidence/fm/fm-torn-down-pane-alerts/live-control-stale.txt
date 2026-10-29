@@ -1,0 +1,13 @@
+## Control: live idle tmux worker lab:fm-scout1 (meta present), real fm-watch.sh FM_POLL=2
+$ cat state/scout1.meta
+window=lab:fm-scout1
+endpoint_task_id=scout1
+backend=tmux
+kind=scout
+worktree=/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.SkpWIo/wt-scout1
+project=/var/folders/ym/vnmfjh5n7dn2vdzdgy7zrbjh0000gn/T//fm-lab.SkpWIo/projects/demo
+$ cat watch.out
+stale: lab:fm-scout1
+exit=0
+$ cat state/.wake-queue
+1793305768	1	stale	lab:fm-scout1	stale: lab:fm-scout1

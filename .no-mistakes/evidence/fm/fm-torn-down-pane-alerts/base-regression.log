@@ -1,0 +1,8 @@
+(eval):1: command not found: timeout
+exit=127
+ok - handle_push_transition: enqueue failure cannot commit the Herdr dedupe marker
+not ok - a retired pane must not enqueue a wake: 1793305708	1	stale	sess:p28	stale: sess:p28 (herdr: agent blocked - waiting on human, escalated immediately, not via wedge timer)
+exit=0
+stale: sess:fm-task
+not ok - watcher surfaced stale for a task retired during capture
+exit=1
