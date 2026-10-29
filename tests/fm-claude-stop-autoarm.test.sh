@@ -1429,6 +1429,17 @@ printf 'signal: fixture.status\n'
 printf 'supervision-host: branch-outcome: fixture\n'
 SH
         ;;
+      benign-refusal-then-close)
+        cat <<'SH'
+if [ "$(wc -l < "$FM_HOME/state/host-ran" | tr -d ' ')" -eq 1 ]; then
+  printf 'acked:downtime:fixture-generation\n' > "$FM_HOME/state/.watcher-down"
+  printf 'check: rearm-resurface\n'
+else
+  printf 'pending:downtime:fixture-next\n' > "$FM_HOME/state/.watcher-down"
+  printf 'signal: fixture-next.status\n'
+fi
+SH
+        ;;
       handed-back-many)
         cat <<'SH'
 printf 'pending:downtime:fixture-generation\n' > "$FM_HOME/state/.watcher-down"
@@ -1588,22 +1599,46 @@ test_host_stand_down_is_silent() {
   pass "auto-arm: a host that stood down closes silently without a retry"
 }
 
-# Main already drained and acknowledged the wake, so the rewake is refused on a
-# marker that is no longer downtime: that refusal stays silent and opens no
-# failure episode.
-test_host_benign_rewake_refusal_opens_no_failure_episode() {
+# Main already drained and acknowledged the episode, so the rewake is refused on
+# a marker that is no longer downtime, while the host may have left a successor
+# cycle for main. The hook parks the host again rather than exiting 0 with that
+# cycle unowned, and delivers only the close the next park returns.
+test_host_benign_rewake_refusal_parks_the_host_again() {
   local dir out status
   dir=$(make_primary_dir "$TMP_ROOT/host-benign-refusal")
   mkdir -p "$dir/config"
   rm -f "$dir/config/supervision-host-off"
   : > "$dir/state/task.meta"
-  write_host_fixture "$dir" benign-refusal
+  write_host_fixture "$dir" benign-refusal-then-close
   out=$(run_autoarm "$dir" 2>/dev/null); status=$?
-  expect_code 0 "$status" "a refused rewake on an acknowledged marker must stay silent"
+  expect_code 2 "$status" "the close of the host parked again must rewake main"
+  [ "$(wc -l < "$dir/state/host-ran" | tr -d ' ')" -eq 2 ] || fail "a refused hand-back did not park the host exactly once more"
+  assert_contains "$out" "signal: fixture-next.status" "the rewake must carry the next park's close"
+  assert_not_contains "$out" "check: rearm-resurface" "the refused close must not be delivered with the next one"
+  [ "$(printf '%s\n' "$out" | grep -c '^firstmate watcher wake')" -eq 1 ] || fail "the rewake must carry exactly one banner:"$'\n'"$out"
   assert_not_contains "$out" "auto-arm FAILED" "a benign refusal must not deliver a failure notice"
   assert_absent "$dir/state/.claude-autoarm-failure-notified" "a benign refusal opened a failure episode"
-  [ "$(epoch_outcome "$dir")" != failed ] || fail "a benign refusal must not record outcome=failed"
-  pass "auto-arm: a host rewake refused on an acknowledged marker opens no failure episode"
+  [ "$(epoch_outcome "$dir")" = rewake ] || fail "the next park's close must record outcome=rewake, got: $(epoch_outcome "$dir")"
+  pass "auto-arm: a host rewake refused on an acknowledged marker parks the host again and delivers its next close"
+}
+
+# A refusal that keeps recurring is no longer benign: after a bounded number of
+# re-parks the hook delivers the lost hand-back notice instead of exiting 0.
+test_host_repeated_rewake_refusal_notifies_after_bounded_reparks() {
+  local dir out status
+  dir=$(make_primary_dir "$TMP_ROOT/host-repeated-refusal")
+  mkdir -p "$dir/config"
+  rm -f "$dir/config/supervision-host-off"
+  : > "$dir/state/task.meta"
+  write_host_fixture "$dir" benign-refusal
+  out=$(run_autoarm "$dir" 2>/dev/null); status=$?
+  expect_code 2 "$status" "a refusal that outlasts the re-park bound must reach main"
+  [ "$(wc -l < "$dir/state/host-ran" | tr -d ' ')" -eq 4 ] || fail "the host was not parked again exactly three times: $(wc -l < "$dir/state/host-ran")"
+  assert_contains "$out" "auto-arm FAILED - the supervision host returned an actionable wake" "an exhausted refusal must deliver the failure notice"
+  [ "$(printf '%s\n' "$out" | grep -c '^firstmate watcher wake')" -eq 1 ] || fail "the notice must carry exactly one banner:"$'\n'"$out"
+  assert_present "$dir/state/.claude-autoarm-failure-notified" "an exhausted refusal did not record its failure episode"
+  [ "$(epoch_outcome "$dir")" = failed ] || fail "an exhausted refusal must record outcome=failed, got: $(epoch_outcome "$dir")"
+  pass "auto-arm: a host rewake refused past the re-park bound delivers the failure notice"
 }
 
 # The host handed a wake back but left the marker in handling (pending or
@@ -1760,7 +1795,8 @@ test_host_handback_beside_a_quiet_record_carries_no_away_note
 test_plain_arm_banner_keeps_its_wake_line_cap
 test_host_handback_carries_every_host_line
 test_host_stand_down_is_silent
-test_host_benign_rewake_refusal_opens_no_failure_episode
+test_host_benign_rewake_refusal_parks_the_host_again
+test_host_repeated_rewake_refusal_notifies_after_bounded_reparks
 test_host_lost_handback_notifies_once_per_episode
 test_host_lost_announced_handback_notifies_once_per_episode
 test_host_crash_is_retried_then_reported
