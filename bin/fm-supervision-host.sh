@@ -160,7 +160,10 @@
 # integer below the 28800-second registration, any other value is the default),
 # FM_SUPERVISION_HOST_PARK_LIMIT (the park boundary; a later value below the
 # registration lets turns run past the boundary up to it, any other value is
-# the boundary), FM_SUPERVISION_HOST_TURN_TIMEOUT (1200), FM_SUPERVISION_HOST_ROTATE_TURNS (20:
+# the boundary), FM_SUPERVISION_HOST_PARK_SPENT (0: seconds the owner's hook
+# already spent on earlier parks, counted toward this park's boundary so a
+# re-park cannot outlive the registration), FM_SUPERVISION_HOST_TURN_TIMEOUT
+# (1200), FM_SUPERVISION_HOST_ROTATE_TURNS (20:
 # a new engine conversation after this many turns; every main session start
 # also opens a new one), FM_SUPERVISION_HOST_READY_TIMEOUT (25: how long a
 # successor cycle may take to verify), FM_SUPERVISION_HOST_POLL (1).
@@ -215,6 +218,7 @@ PARK_SECONDS=$(numeric_or "${FM_SUPERVISION_HOST_PARK_SECONDS:-}" 27000)
 [ "$PARK_SECONDS" -lt 28800 ] 2>/dev/null || PARK_SECONDS=27000
 PARK_LIMIT=$(numeric_or "${FM_SUPERVISION_HOST_PARK_LIMIT:-}" "$PARK_SECONDS")
 { [ "$PARK_LIMIT" -lt 28800 ] && [ "$PARK_LIMIT" -ge "$PARK_SECONDS" ]; } 2>/dev/null || PARK_LIMIT=$PARK_SECONDS
+PARK_SPENT=$(numeric_or "${FM_SUPERVISION_HOST_PARK_SPENT:-}" 0)
 TURN_TIMEOUT=$(numeric_or "${FM_SUPERVISION_HOST_TURN_TIMEOUT:-}" 1200)
 ROTATE_TURNS=$(numeric_or "${FM_SUPERVISION_HOST_ROTATE_TURNS:-}" 20)
 READY_TIMEOUT=$(numeric_or "${FM_SUPERVISION_HOST_READY_TIMEOUT:-}" 25)
@@ -485,7 +489,7 @@ park_elapsed() {  # Sets PARK_ELAPSED without a production clock/helper fork.
     PARK_ELAPSED=$(numeric_or "$(cat "$FM_TEST_SUPERVISION_HOST_CLOCK" 2>/dev/null)" 0)
     return
   fi
-  PARK_ELAPSED=$((SECONDS - HOST_STARTED_SECONDS))
+  PARK_ELAPSED=$((SECONDS - HOST_STARTED_SECONDS + PARK_SPENT))
 }
 
 boundary_reached() {

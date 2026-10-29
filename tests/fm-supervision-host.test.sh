@@ -1147,6 +1147,62 @@ test_next_park_takes_over_the_cycle_a_pass_through_left_for_main() {
   pass "host+hook: the next park takes over the cycle a main-only pass-through left, so one arm owns it"
 }
 
+# The live stop (2026-10-29): a park's first cycle announced a recovery episode,
+# main drained and acknowledged it while that cycle was still in its first poll
+# pass, and the cycle then woke "check: rearm-resurface" anyway. The host passed
+# that main-only close through and left a successor cycle for main, but the
+# acknowledged marker refused the rewake, so the Stop hook exited 0 in silence.
+# The successor's later close had no owner to deliver it, and main slept for
+# seven hours. A gate at the first poll pass (the fleet-ledger capture, which
+# runs before the resurface) holds the cycle while main acknowledges. The hook
+# must park the host again rather than go silent, so the next close reaches main.
+test_claude_stop_hook_reparks_when_main_acknowledged_before_the_resurface() {
+  local home entry
+  home=$(make_primary_home hook-acked-resurface)
+  rm "$home/bin"
+  mkdir "$home/bin"
+  for entry in "$ROOT"/bin/*; do ln -s "$entry" "$home/bin/${entry##*/}"; done
+  rm "$home/bin/fm-fleet-ledger.sh"
+  cat > "$home/bin/fm-fleet-ledger.sh" <<'SH'
+#!/usr/bin/env bash
+[ "${1:-}" = capture ] && rm "$FM_HOME/gate.armed" 2>/dev/null || exit 0
+: > "$FM_HOME/gate.reached"
+i=0
+while [ ! -e "$FM_HOME/gate.release" ] && [ "$i" -lt 600 ]; do sleep 0.1; i=$((i + 1)); done
+SH
+  chmod +x "$home/bin/fm-fleet-ledger.sh"
+  : > "$home/config/fleet-ledger"
+  : > "$home/gate.armed"
+  seed_open_decision "$home/state" acked-resurface
+  printf 'pending:downtime:acked-resurface-generation\n' > "$home/state/.watcher-down"
+  start_hook_session "$home"
+  turn_end "$home"
+  wait_until 250 test -e "$home/gate.reached" \
+    || fail "acked resurface: the first cycle never reached its first poll pass: $(cat "$home/hook.err" 2>/dev/null)"
+  assert_re '^announced:downtime:acked-resurface-generation$' "$home/state/.watcher-down" \
+    "fixture: the first cycle did not announce the recovery episode"
+  main_drain "$home" >/dev/null
+  [ -n "$MAIN_ACK" ] || fail "acked resurface: main's drain printed no acknowledgement"
+  # shellcheck disable=SC2086 # the printed acknowledgement arguments
+  FM_HOME="$home" "$FAKE_CLAUDE" -c '"$0" "$@" >/dev/null 2>&1' "$ROOT/bin/fm-wake-drain.sh" $MAIN_ACK \
+    || fail "acked resurface: main's acknowledgement failed: $MAIN_ACK"
+  assert_re '^acked:handling:acked-resurface-generation$' "$home/state/.watcher-down" \
+    "fixture: main's acknowledgement did not retire the episode"
+  : > "$home/gate.release"
+  wait_until 250 grep -q '	pass-through	attended	main-only	check: rearm-resurface' "$home/state/.supervision-host.log" \
+    || fail "acked resurface: the first cycle did not pass its resurface through to main: $(cat "$home/state/.supervision-host.log" 2>/dev/null)"
+  sleep 2
+  ! hook_exited "$home" \
+    || fail "acked resurface: the Stop hook ended after the refused hand-back (exit $(cat "$home/hook.rc")), leaving the successor cycle with no owner: $(cat "$home/hook.err")"
+  wait_until 150 host_owns_the_only_cycle "$home" \
+    || fail "acked resurface: the parked-again host does not own the home's only watcher cycle:"$'\n'"$(home_arms "$home")"$'\n'"$(cat "$home/state/.supervision-host.log")"
+  append_status "$home" 'which region?' needs-decision
+  wait_until 250 hook_exited "$home" || fail "acked resurface: the next close never reached the Stop hook: $(cat "$home/state/.supervision-host.log")"
+  assert_rewoke_main "$home" "acked resurface (next close)"
+  assert_re '^signal: .*demo.status' "$home/hook.err" "acked resurface: the rewake must carry the next close"
+  pass "host+hook: a resurface main acknowledged before its hand-back parks the host again, so the next close still reaches main"
+}
+
 # A park stopped before its take-over stops the left cycle (here held in the
 # take-over's handover snapshot by the recovery-marker lock) must not forget
 # that cycle's arm: the park the Stop hook runs next still takes it over rather
@@ -1760,6 +1816,7 @@ test_claude_stop_hook_notifies_when_at_turn_downtime_write_fails
 test_successor_close_during_main_turn_is_delivered_at_the_next_turn_end
 test_pass_through_successor_survives_the_hook_process_group_teardown
 test_next_park_takes_over_the_cycle_a_pass_through_left_for_main
+test_claude_stop_hook_reparks_when_main_acknowledged_before_the_resurface
 test_a_park_stopped_mid_take_over_leaves_the_take_over_to_the_next_park
 test_unrecorded_successor_is_stopped_rather_than_left_for_main
 test_primary_without_a_verified_mirror_runs_away_only
