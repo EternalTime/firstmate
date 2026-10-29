@@ -753,7 +753,7 @@ secondmate_liveness_one() {  # <meta> <id>
   fi
   fm_secondmate_liveness_probe "$meta" "$id" full
   case "$FM_SM_LIVE_STATUS" in
-    silent)
+    silent|asleep)
       ;;
     alive)
       [ "${FM_BOOTSTRAP_VERBOSE_FACTS:-0}" != 1 ] || echo "BOOTSTRAP_INFO: $FM_SM_LIVE_LINE"

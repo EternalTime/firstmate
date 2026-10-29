@@ -80,6 +80,9 @@
 #   stale: <mate-id> <kind>         the sampled endpoint retired or changed
 #   failed: <mate-id> <kind>        the steer could not be recorded
 #   sent-unrecorded: <mate-id> <kind>  sent, but cooldown commit failed
+#   asleep: <mate-id> <kind>        the mate is asleep; nothing sent, and its
+#                                   own session start reconciles its books when
+#                                   it is woken, so the request is retired
 # Request prints `requested: <path>` or `not-needed`.
 # Process-requests prints `processed: <count> deferred: <count>` after work and
 # exits 1 when any request remains deferred; an empty queue is silent success.
@@ -91,6 +94,8 @@ STATE="${FM_STATE_OVERRIDE:-$FM_HOME/state}"
 
 # shellcheck source=bin/fm-wake-lib.sh
 . "$SCRIPT_DIR/fm-wake-lib.sh"
+# shellcheck source=bin/fm-secondmate-sleep-lib.sh
+. "$SCRIPT_DIR/fm-secondmate-sleep-lib.sh"
 
 # One nudge per home per four hours.
 FM_RECONCILE_COOLDOWN_SECONDS=${FM_RECONCILE_COOLDOWN_SECONDS:-14400}
@@ -509,6 +514,11 @@ cmd_notify() {
         printf 'failed: %s %s\n' "$id" "$kind"
         rc=1
       fi
+      release_active_locks
+      continue
+    fi
+    if fm_secondmate_asleep "$meta"; then
+      printf 'asleep: %s %s\n' "$id" "$kind"
       release_active_locks
       continue
     fi

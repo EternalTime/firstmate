@@ -3169,6 +3169,29 @@ test_secondmate_liveness_tick_relaunches_missing_endpoint() {
   pass "watch liveness: a missing secondmate endpoint is relaunched without a pre-kill"
 }
 
+test_secondmate_liveness_tick_never_relaunches_an_asleep_mate() {
+  local dir state pid
+  dir=$(make_secondmate_liveness_case liveness-asleep)
+  state="$dir/state"
+  # Put to sleep by bin/fm-secondmate-sleep.sh: the record carries the mark and
+  # its window was closed, which the tick would otherwise read as missing.
+  printf 'asleep=%s\n' "$(date +%s)" >> "$state/sm1.meta"
+
+  run_liveness_leg "$dir" asleep FM_FAKE_WINDOW_GONE=1; pid=$LIVENESS_PID
+  sleep 4
+  is_live_non_zombie "$pid" \
+    || fail "the watcher woke about an asleep secondmate: $(cat "$dir/watch-asleep.out" "$dir/watch-asleep.err")"
+  kill_liveness_leg "$pid"
+  [ -e "$state/.secondmate-liveness-tick" ] \
+    || fail "the liveness tick never ran, so the leg proved nothing"
+  [ ! -s "$dir/tmux.log" ] || fail "the tick touched an asleep secondmate's endpoint: $(cat "$dir/tmux.log")"
+  assert_absent "$state/.secondmate-relaunch-sm1" "an asleep secondmate earned a relaunch attempt"
+  ! grep -q 'secondmate' "$state/.wake-queue" 2>/dev/null \
+    || fail "an asleep secondmate produced a wake row: $(cat "$state/.wake-queue")"
+  grep -q '^asleep=' "$state/sm1.meta" || fail "the tick cleared the asleep mark"
+  pass "watch liveness: an asleep secondmate is never relaunched and raises no wake"
+}
+
 test_secondmate_liveness_tick_relaunches_every_dead_mate_before_waking() {
   local dir state pid out home id
   dir=$(make_secondmate_liveness_case liveness-several)
@@ -3559,6 +3582,7 @@ test_wake_queue_prune_task
 test_drain_rotates_orphaned_scratch
 test_secondmate_liveness_tick_relaunches_dead_endpoint_once
 test_secondmate_liveness_tick_relaunches_missing_endpoint
+test_secondmate_liveness_tick_never_relaunches_an_asleep_mate
 test_secondmate_liveness_tick_relaunches_every_dead_mate_before_waking
 test_secondmate_liveness_tick_leaves_alive_and_inconclusive_untouched
 test_secondmate_liveness_tick_cadence_gates_the_probe

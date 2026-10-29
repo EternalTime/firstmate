@@ -33,7 +33,6 @@ fm_git_identity fmtest fmtest@example.com
 TMP_ROOT=$(fm_test_tmproot fm-secondmate-restart)
 mkdir -p "$TMP_ROOT"
 TMP_ROOT=$(cd "$TMP_ROOT" && pwd -P)
-trap 'rm -rf -- "$TMP_ROOT"' EXIT
 
 # A session-provider stub that models the two things this pass depends on: the
 # harness exit command stops the agent, a launch brief starts the replacement,
@@ -812,6 +811,37 @@ test_already_current_mate_restarts_end_to_end() {
   pass "T15 an already-current live mate is named by the update pass and genuinely restarted"
 }
 
+# --- T15b: an asleep mate is left out of the update pass's restart set --------
+test_asleep_mate_is_not_restarted_by_the_update_pass() {
+  local dir out rc
+  dir=$(new_case asleep-update)
+  add_repo_backed_mate "$dir" sm1
+  # The record carries the asleep mark bin/fm-secondmate-sleep.sh writes. The
+  # endpoint is deliberately left reading alive: a closed endpoint would already
+  # be skipped as stopped, while an endpoint this pass cannot read (a session
+  # server that is down, say) reads as possibly alive, and the mark alone must
+  # keep an asleep mate out of the restart set either way.
+  printf 'asleep=%s\n' "$(date +%s)" >> "$dir/home/state/sm1.meta"
+
+  out=$(run_update_in_case "$dir")
+
+  assert_contains "$out" "restart-secondmates: none" "an asleep mate must not be named for restart"
+  assert_contains "$out" "nudge-secondmates: none" "an asleep mate must not be steered"
+  assert_no_grep '/exit' "$dir/fake/literal" "the update pass stopped something for an asleep mate"
+  [ ! -s "$dir/fake/rings" ] || fail "the update pass rang an asleep mate"
+  grep -q '^asleep=' "$dir/home/state/sm1.meta" || fail "the update pass cleared the asleep mark"
+
+  # Named by hand anyway, it is reported as left asleep and nothing reaches it.
+  out=$(run_restart "$dir" fm-sm1); rc=$?
+  expect_code 0 "$rc" "an asleep mate named by hand is accounted for, not a failure"$'\n'"$out"
+  assert_contains "$out" "asleep: sm1: left asleep" "an asleep mate must be reported as left asleep"
+  assert_contains "$out" "summary: 0 of 1 restarted, 0 nudged, 0 unreached, 1 left asleep" \
+    "the summary must account for the asleep mate"
+  assert_no_grep '/exit' "$dir/fake/literal" "the restart stopped something for an asleep mate"
+  [ ! -s "$dir/fake/rings" ] || fail "the restart rang an asleep mate"
+  pass "T15b an asleep mate is neither restarted nor steered by the update pass or a hand-run restart"
+}
+
 # --- T16: an already-current mate that cannot prove a restart stays honest ----
 # Same already-current home, a runtime with no recovery-grade state classifier.
 # Unconditional restart must not become an unconditional CLAIM of one: the update
@@ -865,6 +895,7 @@ test_relaunches_do_not_block_persist_polling
 test_unpublished_worker_result_is_accounted_for
 test_result_published_while_reaping_is_honored
 test_already_current_mate_restarts_end_to_end
+test_asleep_mate_is_not_restarted_by_the_update_pass
 test_already_current_unprovable_mate_stays_on_the_nudge_path
 
 echo "# all fm-secondmate-restart tests passed"

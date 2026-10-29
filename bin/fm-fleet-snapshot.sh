@@ -67,7 +67,9 @@
 #     endpoint.exists is the cheap local backend endpoint-presence read.
 #     endpoint.agent_alive is populated for local secondmates only, where it is
 #     useful return-channel supervision data; remote secondmates use "unknown"
-#     without a probe, and other tasks use "not_checked".
+#     without a probe, an asleep secondmate (bin/fm-secondmate-sleep-lib.sh)
+#     uses "asleep" without a probe and endpoint.status "asleep", and other
+#     tasks use "not_checked".
 #   scout_reports[]: present data/<id>/report.md pointers.
 #   main_inventory: {valid,reason,orphan_in_flight[],unstructured_current_count} -
 #     main-home current-inventory checks shared with secondmate_home_summary_json
@@ -221,6 +223,9 @@ esac
 # shellcheck source=bin/fm-ff-lib.sh
 # shellcheck disable=SC1091
 . "$SCRIPT_DIR/fm-ff-lib.sh"  # validate_secondmate_home: shared seeded-home boundary checks
+# shellcheck source=bin/fm-secondmate-sleep-lib.sh
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/fm-secondmate-sleep-lib.sh"  # fm_secondmate_asleep: a mate whose endpoint was closed on purpose
 # shellcheck source=bin/fm-timeout-lib.sh
 # shellcheck disable=SC1091
 . "$SCRIPT_DIR/fm-timeout-lib.sh"  # fm_run_timed: the shared hard bound
@@ -658,7 +663,10 @@ prefetch_task_observations() {  # <meta> <id>
     kind=$(meta_value "$meta" kind)
     backend=$(fm_backend_of_meta "$meta")
     target=$(fm_backend_target_of_meta "$meta")
-    if [ -n "$target" ]; then
+    if fm_secondmate_asleep "$meta"; then
+      # Closed on purpose: probing it would only report a sleeping mate as gone.
+      agent_alive=asleep
+    elif [ -n "$target" ]; then
       if fm_backend_target_exists "$backend" "$target" "fm-$id" >/dev/null 2>&1; then
         endpoint_exists=true
       else
@@ -910,7 +918,7 @@ task_json_lines() {
         current_state:($current_state + {observed_at:$observed_at,freshness:"fresh"}),
         endpoint:{target:($target | if . == "" then null else . end),exists:$endpoint_exists,agent_alive:$agent_alive,
           status:(if $endpoint_exists == false then "absent"
-                  elif $agent_alive == "alive" or $agent_alive == "dead" then $agent_alive
+                  elif $agent_alive == "alive" or $agent_alive == "dead" or $agent_alive == "asleep" then $agent_alive
                   else "unknown" end),
           observed_at:$observed_at,freshness:"fresh"},
         pr:{url:($pr | if . == "" then null else . end),source:$pr_source,head:($pr_head | if . == "" then null else . end)},

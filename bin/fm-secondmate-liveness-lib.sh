@@ -61,6 +61,8 @@ FM_SM_LIVE_LIB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 . "$FM_SM_LIVE_LIB_DIR/fm-remote-readiness-lib.sh"
 # shellcheck source=bin/fm-timeout-lib.sh
 . "$FM_SM_LIVE_LIB_DIR/fm-timeout-lib.sh"
+# shellcheck source=bin/fm-secondmate-sleep-lib.sh
+. "$FM_SM_LIVE_LIB_DIR/fm-secondmate-sleep-lib.sh"
 
 # Per-task probe+kill+relaunch serialization. A busy lock means another
 # supervisor (the other sweep, or a racing tick) is mid-episode on this mate;
@@ -118,7 +120,7 @@ fm_secondmate_liveness_recent_attempts() {  # <id> <window-secs>
 #
 # Read-only probe of one registered secondmate's recorded endpoint. Populates:
 #
-#   FM_SM_LIVE_STATUS  silent | alive | relaunchable | skipped
+#   FM_SM_LIVE_STATUS  silent | asleep | alive | relaunchable | skipped
 #   FM_SM_LIVE_STATE   the raw classifier/state word
 #   FM_SM_LIVE_KILL    1 when relaunch must first kill a confirmed-dead local
 #                      endpoint (its shell husk occupies the name)
@@ -128,7 +130,9 @@ fm_secondmate_liveness_recent_attempts() {  # <id> <window-secs>
 #   FM_SM_LIVE_LINE    verbose already-live line body, on alive
 #
 # `silent` means the meta records no endpoint at all - that shape is owned by
-# secondmate-provisioning recovery, not liveness.
+# secondmate-provisioning recovery, not liveness. `asleep` means the mate was
+# deliberately put to sleep (bin/fm-secondmate-sleep-lib.sh): its endpoint is
+# never probed, so callers neither relaunch it nor report anything about it.
 #
 # The caller must hold fm_secondmate_liveness_lock for <id> whenever a
 # relaunchable verdict could be acted on.
@@ -137,6 +141,10 @@ fm_secondmate_liveness_probe() {  # <meta> <id> <full|poll>
   FM_SM_LIVE_STATUS=skipped FM_SM_LIVE_STATE=unknown FM_SM_LIVE_KILL=0
   FM_SM_LIVE_CAUSE='' FM_SM_LIVE_WHERE='' FM_SM_LIVE_REASON='' FM_SM_LIVE_LINE=''
   local window harness remote_host remote_rc out agent_state readiness_reason route_out remote_backend
+  if fm_secondmate_asleep "$meta"; then
+    FM_SM_LIVE_STATUS=asleep
+    return 0
+  fi
   window=$(fm_meta_get "$meta" window)
   [ -n "$window" ] || { FM_SM_LIVE_STATUS=silent; return 0; }
   harness=$(fm_meta_get "$meta" harness)

@@ -108,7 +108,8 @@
 # worse than a loud refusal.
 #
 # A remotely placed secondmate is refused by name: its agent runs on another
-# host, so no postcondition this plane verifies could be read for it here.
+# host, so no postcondition this plane verifies could be read for it here. An
+# asleep secondmate is refused by name too, pointing at its wake command.
 #
 # Fail-closed boundaries:
 #   - An unverified harness, or a harness whose control mechanics are unknown,
@@ -181,6 +182,8 @@ DATA="${FM_DATA_OVERRIDE:-$FM_HOME/data}"
 . "$SCRIPT_DIR/fm-worker-account-lib.sh"
 # shellcheck source=bin/fm-exclude-tools-lib.sh
 . "$SCRIPT_DIR/fm-exclude-tools-lib.sh"
+# shellcheck source=bin/fm-secondmate-sleep-lib.sh
+. "$SCRIPT_DIR/fm-secondmate-sleep-lib.sh"
 
 POLL=${FM_CONTROL_POLL:-0.5}
 SETTLE_WAIT=${FM_CONTROL_SETTLE_WAIT:-5}
@@ -351,6 +354,13 @@ fi
 # instead, using the same `remote_host` signal bin/fm-send.sh routes on.
 if [ -n "$(fm_meta_get "$META" remote_host)" ]; then
   die "task $ID is a remotely placed secondmate on $(fm_meta_get "$META" remote_host); its agent runs outside this home, so no lifecycle action here could verify that it interrupted, stopped, or came back. Drive its lifecycle on that host, and reconcile it through the secondmate recovery path rather than this plane"
+fi
+
+# An asleep second mate has no agent to interrupt, stop, or replace: its endpoint
+# was closed on purpose, and only its wake brings it back
+# (bin/fm-secondmate-sleep-lib.sh).
+if fm_secondmate_asleep "$META"; then
+  die "$(fm_secondmate_asleep_refusal "$ID")"
 fi
 
 fm_backend_validate_task_endpoint "$META" "$ID" || exit 1

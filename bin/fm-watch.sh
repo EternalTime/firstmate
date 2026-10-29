@@ -243,6 +243,9 @@ WATCH_HOME_EXISTED=0
 # and wake emission (secondmate_liveness_tick below).
 # shellcheck source=/dev/null # Analyzed separately as a canonical lint root.
 . "$SCRIPT_DIR/fm-secondmate-liveness-lib.sh"
+# The asleep mark every per-mate scan below steps aside for.
+# shellcheck source=bin/fm-secondmate-sleep-lib.sh
+. "$SCRIPT_DIR/fm-secondmate-sleep-lib.sh"
 
 WATCH_LOCK="$STATE/.watch.lock"
 WATCH_PATH="$SCRIPT_DIR/fm-watch.sh"
@@ -823,10 +826,14 @@ signal_turnend_panes_churned() {  # <file> ...
   return 0
 }
 
+# Every endpoint this home has recorded, once each. An asleep second mate's
+# endpoint was closed on purpose (bin/fm-secondmate-sleep-lib.sh), so it is left
+# out of every per-window scan rather than read as a missing or stale pane.
 recorded_windows() {
   local meta w seen=
   for meta in "$STATE"/*.meta; do
     [ -e "$meta" ] || continue
+    ! fm_secondmate_asleep "$meta" || continue
     w=$(fm_backend_target_of_meta "$meta")
     [ -n "$w" ] || continue
     case "$seen" in
@@ -965,10 +972,12 @@ secondmate_wake_stall_tick() {
   local meta task kind remote_host home queue row epoch seq row_key marker progress_marker ring_marker progress observed_at observed_key
   local receipt receipt_dir notify_key queued idle reason episode_alerted already_rung w
   # Endpoint metadata admits this queue-loop check; secondmate-liveness owns registered mates whose endpoint is missing or dead.
+  # An asleep mate drains nothing by design, so its queue is not a stalled loop.
   for meta in "$STATE"/*.meta; do
     [ -e "$meta" ] || continue
     kind=$(fm_meta_get "$meta" kind)
     [ "$kind" = secondmate ] || continue
+    ! fm_secondmate_asleep "$meta" || continue
     remote_host=$(fm_meta_get "$meta" remote_host)
     [ -z "$remote_host" ] || continue
     task=${meta##*/}
@@ -1071,7 +1080,8 @@ EOF
 # the marker so a manually recovered mate rejoins the guarantee with a full
 # budget. The per-mate liveness lock serializes this tick against a concurrent
 # session-start sweep, so neither side can kill or re-probe an endpoint the
-# other is mid-relaunch on.
+# other is mid-relaunch on. An asleep mate's probe returns `asleep` without
+# reading its endpoint, so the tick neither relaunches it nor wakes about it.
 secondmate_liveness_tick() {
   local tick_marker="$STATE/.secondmate-liveness-tick"
   [ "$(age_of "$tick_marker")" -ge "$SECONDMATE_LIVENESS_SECS" ] || return 0
