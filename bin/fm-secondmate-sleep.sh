@@ -156,10 +156,14 @@ die() {  # <message>
   exit 1
 }
 
-# The first line of a command's output that carries anything, flattened to one
-# readable line with its "error: " prefix dropped.
-first_reported_line() {  # <text>
-  printf '%s\n' "$1" | sed -n '/./{s/^error: //;s/[[:space:]]\{1,\}/ /g;p;q;}'
+# A command's own reason for failing, flattened to one readable line: its last
+# "error: " line when it printed one (warnings often come first), else its
+# first line that carries anything.
+reported_reason() {  # <text>
+  local reason
+  reason=$(printf '%s\n' "$1" | sed -n 's/^error: //p' | tail -1)
+  [ -n "$reason" ] || reason=$(printf '%s\n' "$1" | sed -n '/./{p;q;}')
+  printf '%s\n' "${reason:-no reason was reported}" | sed 's/[[:space:]]\{1,\}/ /g'
 }
 
 require_secondmate_record() {
@@ -218,7 +222,7 @@ persist_open_work() {
     FM_PENDING_REPLY_EXISTING_CORR="$corr" \
     "$SCRIPT_DIR/fm-send.sh" "$ID" "$SLEEP_PERSIST_REQUEST" 2>&1); then
     fm_pending_reply_discard_undelivered "$STATE" "$corr" >/dev/null 2>&1 || true
-    PERSIST_REASON="the request to write down its open work could not be delivered: $(first_reported_line "$send_out")"
+    PERSIST_REASON="the request to write down its open work could not be delivered: $(reported_reason "$send_out")"
     return 1
   fi
   deadline=$(($(date +%s) + PERSIST_WAIT))
@@ -272,7 +276,7 @@ cmd_sleep() {
         || die "second mate $ID was not put to sleep: $PERSIST_REASON. Its agent was left running and nothing else changed"
       if ! stop_out=$(FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" \
         "$SCRIPT_DIR/fm-control.sh" "$ID" exit 2>&1); then
-        die "second mate $ID was not put to sleep: its agent could not be stopped: $(first_reported_line "$stop_out"). Nothing else was changed"
+        die "second mate $ID was not put to sleep: its agent could not be stopped: $(reported_reason "$stop_out"). Nothing else was changed"
       fi
       ;;
     dead|missing) ;;
@@ -360,15 +364,15 @@ cmd_wake() {
     META_LOCK=$(fm_meta_lock_path "$META") && fm_lock_acquire_wait "$META_LOCK" && META_LOCK_HELD=1
     if [ "$META_LOCK_HELD" = 1 ] && [ ! -e "$META" ] && [ ! -L "$META" ] && publish_record "$backup"; then
       SCRATCH=
-      die "second mate $ID stays asleep: its launch failed ($(first_reported_line "$spawn_out")), and its asleep record was restored"
+      die "second mate $ID stays asleep: its launch failed ($(reported_reason "$spawn_out")), and its asleep record was restored"
     fi
     SCRATCH=
-    die "second mate $ID's launch failed ($(first_reported_line "$spawn_out")) and its record could not be restored; its record copy is kept at $backup"
+    die "second mate $ID's launch failed ($(reported_reason "$spawn_out")) and its record could not be restored; its record copy is kept at $backup"
   fi
   if fm_secondmate_asleep "$META"; then
-    die "second mate $ID stays asleep: its launch failed: $(first_reported_line "$spawn_out")"
+    die "second mate $ID stays asleep: its launch failed: $(reported_reason "$spawn_out")"
   fi
-  die "second mate $ID's launch reported failure after it republished the mate's record ($(first_reported_line "$spawn_out")); it is no longer marked asleep, so reconcile its current record"
+  die "second mate $ID's launch reported failure after it republished the mate's record ($(reported_reason "$spawn_out")); it is no longer marked asleep, so reconcile its current record"
 }
 
 case "$VERB" in

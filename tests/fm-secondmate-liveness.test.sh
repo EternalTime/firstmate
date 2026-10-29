@@ -533,6 +533,28 @@ test_sweep_respawns_authoritatively_missing_pi_secondmate() {
   pass "sweep: an authoritatively missing Pi secondmate window is relaunched"
 }
 
+test_sweep_never_relaunches_an_asleep_secondmate() {
+  local w fb tmuxfb log out state
+  w=$(new_world sweep-asleep)
+  add_sm_home "$w" sm1 firstmate:fm-sm1
+  # Put to sleep by bin/fm-secondmate-sleep.sh: the record carries the mark and
+  # its window was closed, which the sweep would otherwise read as missing.
+  printf 'asleep=%s\n' "$(date +%s)" >> "$w/home/state/sm1.meta"
+  fb=$(make_toolchain "$w"); tmuxfb=$(make_liveness_tmux "$w")
+  log="$w/calls.log"; : > "$log"
+
+  for state in missing zsh; do
+    out=$(run_bootstrap "$tmuxfb:$fb" "$w/home" "$state" "$log")
+    assert_not_contains "$out" "SECONDMATE_LIVENESS:" "an asleep secondmate must raise no liveness line (endpoint $state)"
+    assert_not_contains "$out" "NUDGE_SECONDMATES:" "an asleep secondmate must not be nudged (endpoint $state)"
+    assert_not_contains "$(cat "$log")" "new-window" "an asleep secondmate must not be relaunched (endpoint $state)"
+    assert_not_contains "$(cat "$log")" "kill-window" "an asleep secondmate's endpoint must not be touched (endpoint $state)"
+  done
+  assert_absent "$w/home/state/.secondmate-relaunch-sm1" "an asleep secondmate earned a relaunch attempt"
+  grep -q '^asleep=' "$w/home/state/sm1.meta" || fail "the sweep cleared the asleep mark"
+  pass "sweep: an asleep secondmate is never relaunched, nudged, or reported"
+}
+
 test_sweep_respawns_authoritatively_missing_pi_signed_secondmate() {
   local w fb tmuxfb log out
   w=$(new_world sweep-missing-pi-signed)
@@ -777,6 +799,7 @@ test_sweep_serializes_distinct_secondmate_relaunches
 test_sweep_leaves_alive_secondmate_untouched
 test_sweep_respawns_authoritatively_missing_pi_secondmate
 test_sweep_respawns_authoritatively_missing_pi_signed_secondmate
+test_sweep_never_relaunches_an_asleep_secondmate
 test_sweep_never_acts_on_ambiguous_existing_process
 test_sweep_never_acts_on_transient_unreadability
 test_sweep_reports_missing_endpoint_relaunch_failure

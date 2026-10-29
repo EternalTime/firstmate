@@ -38,7 +38,8 @@
 #
 # A mate whose persist answer did not arrive or whose runtime cannot prove a
 # restart gets the ordinary re-read nudge and is reported as a nudge, never as a
-# clean reload. Once a relaunch is attempted, any failed or ambiguous result is
+# clean reload. An asleep mate (bin/fm-secondmate-sleep-lib.sh) has no agent to
+# replace or steer, so it is reported as left asleep and nothing is sent to it. Once a relaunch is attempted, any failed or ambiguous result is
 # reported as unknown rather than attributing it to either incarnation.
 #
 # Placement changes the transport and nothing else. A local mate is restarted
@@ -72,7 +73,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FM_ROOT="${FM_ROOT_OVERRIDE:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
 usage() {
-  sed -n '2,65{s/^# \{0,1\}//;p;}' "$0"
+  sed -n '2,69{s/^# \{0,1\}//;p;}' "$0"
 }
 
 case "${1:-}" in
@@ -94,6 +95,8 @@ STATE="${FM_STATE_OVERRIDE:-$FM_HOME/state}"
 . "$SCRIPT_DIR/fm-secondmate-nudge-lib.sh"
 # shellcheck source=bin/fm-pending-reply-lib.sh
 . "$SCRIPT_DIR/fm-pending-reply-lib.sh"
+# shellcheck source=bin/fm-secondmate-sleep-lib.sh
+. "$SCRIPT_DIR/fm-secondmate-sleep-lib.sh"
 
 PERSIST_WAIT=${FM_SECONDMATE_PERSIST_WAIT:-900}
 PERSIST_POLL=${FM_SECONDMATE_PERSIST_POLL:-5}
@@ -134,6 +137,7 @@ RESTART_RESULT=()
 restarted_count=0
 nudged_count=0
 unreached_count=0
+asleep_count=0
 
 # The first line of a command's output that carries anything, flattened to one
 # readable line with its "error: " prefix dropped. A refusal's own words are the
@@ -259,6 +263,14 @@ while [ "$i" -lt "${#IDS[@]}" ]; do
   HARNESS[i]=""
   MODEL[i]=""
   EFFORT[i]=""
+  if fm_secondmate_asleep "$STATE/$id.meta"; then
+    printf 'asleep: %s: left asleep, so it was neither restarted nor sent the re-read message; its wake launch reads the current instructions (%s)\n' \
+      "$id" "$(fm_secondmate_wake_command "$id")"
+    asleep_count=$((asleep_count + 1))
+    PLAN[i]="done"
+    i=$((i + 1))
+    continue
+  fi
   if ! fm_secondmate_restart_capable "$STATE/$id.meta"; then
     REASON[i]=$FM_SECONDMATE_RESTART_REASON
     i=$((i + 1))
@@ -322,7 +334,7 @@ i=0
 while [ "$i" -lt "${#IDS[@]}" ]; do
   if [ "${PLAN[i]}" = persisted-pending ]; then
     pending_count=$((pending_count + 1))
-  else
+  elif [ "${PLAN[i]}" != "done" ]; then
     fall_back_to_nudge "${IDS[$i]}" "${REASON[i]}"
     PLAN[i]="done"
   fi
@@ -374,7 +386,12 @@ done
 
 # --- summary ---------------------------------------------------------------
 
-printf 'summary: %d of %d restarted, %d nudged, %d unreached\n' \
-  "$restarted_count" "${#IDS[@]}" "$nudged_count" "$unreached_count"
+if [ "$asleep_count" -gt 0 ]; then
+  printf 'summary: %d of %d restarted, %d nudged, %d unreached, %d left asleep\n' \
+    "$restarted_count" "${#IDS[@]}" "$nudged_count" "$unreached_count" "$asleep_count"
+else
+  printf 'summary: %d of %d restarted, %d nudged, %d unreached\n' \
+    "$restarted_count" "${#IDS[@]}" "$nudged_count" "$unreached_count"
+fi
 [ "$((nudged_count + unreached_count))" -eq 0 ] || exit 3
 exit 0
