@@ -3063,8 +3063,8 @@ EOF
   # On the first changed signal, linger one grace period and re-scan before
   # classifying: a crewmate's final status write and the same turn's turn-end
   # hook land seconds apart, and reporting them as separate actionable wakes
-  # costs a full firstmate turn each. The re-scan also picks up a newer
-  # signature for an already-pending file (last write wins below).
+  # costs a full firstmate turn each. The post-grace re-scan is the
+  # authoritative pending set, carrying each file's newest signature.
   pending=$(scan_signals)
   if [ -n "$pending" ]; then
     sleep "$SIGNAL_GRACE"
@@ -3199,8 +3199,7 @@ EOF
     # recorded_windows is a snapshot: teardown can remove its metadata before
     # this loop reaches the endpoint. Never resolve an orphan via the tmux
     # naming fallback or treat its missing pane as a stopped worker.
-    [ -f "$STATE/$task.meta" ] || continue
-    [ "$(fm_backend_target_of_meta "$STATE/$task.meta")" = "$w" ] || continue
+    window_owned_by_live_task "$w" "$task" || continue
     # Steering-inbox loss detection runs before the secondmate stale
     # exemption below, because a mate's steers land in an inbox too.
     [ -z "$task" ] || inbox_steer_check "$w" "$task"
@@ -3222,8 +3221,7 @@ EOF
     watcher_capture "$(window_backend "$w")" "$w" 40 "$(window_label "$w")" || continue
     # A capture can finish after teardown has removed the task. Discard that
     # observation before writing hashes or classifying a stale pane.
-    [ -f "$STATE/$task.meta" ] || continue
-    [ "$(fm_backend_target_of_meta "$STATE/$task.meta")" = "$w" ] || continue
+    window_owned_by_live_task "$w" "$task" || continue
     tail40=$WATCHER_CAPTURE
     # The matcher is already defined in this shell. It reads the capture this
     # poll already takes, and a miss drops a name the away daemon saved.

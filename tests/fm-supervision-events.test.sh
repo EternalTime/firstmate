@@ -69,6 +69,24 @@ fm_write_meta "$STATE_DIR/tk1.meta" "window=default:wG:pQ" "backend=herdr" "kind
 [ ! -e "$STATE_DIR/.herdr-escalated-default_wG_pQ" ] || fail "a failed durable enqueue must leave the blocked edge eligible for reconnect reconciliation"
 pass "handle_push_transition: enqueue failure cannot commit the Herdr dedupe marker"
 
+# --- handle_push_transition: a torn-down crew's pane never surfaces stale ----
+# Teardown removed the task's metadata while the event wait held its pane, so
+# the naming fallback alone would still resolve a task id for the window.
+
+reset_state
+handle_push_transition herdr sess "$(mkrec p28 blocked)"
+[ ! -e "$STATE_DIR/.wake-queue" ] || fail "a retired pane must not enqueue a wake: $(cat "$STATE_DIR/.wake-queue")"
+[ ! -s "$WAKE_LOG" ] || fail "a retired pane must not wake the supervisor: $(cat "$WAKE_LOG")"
+[ -e "$STATE_DIR/.herdr-escalated-sess_p28" ] || fail "a retired pane's transition must still be committed"
+pass "handle_push_transition: a pane no live task record names is absorbed without a stale wake"
+
+reset_state
+fm_write_meta "$STATE_DIR/tk2.meta" "window=sess:p29" "backend=herdr" "kind=ship"
+handle_push_transition herdr sess "$(mkrec p28 blocked)"
+[ ! -e "$STATE_DIR/.wake-queue" ] || fail "a pane the live record no longer names must not enqueue a wake"
+[ ! -s "$WAKE_LOG" ] || fail "a pane the live record no longer names must not wake the supervisor"
+pass "handle_push_transition: a pane outside every live task record is absorbed"
+
 # --- handle_push_transition: absorb (no wake, no enqueue) for a declared pause -
 
 reset_state
