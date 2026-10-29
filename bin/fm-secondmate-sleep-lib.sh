@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 # fm-secondmate-sleep-lib.sh - the asleep record of a persistent second mate.
-# Source only; defines functions and has no side effects.
+# Source only; defines functions and one result variable, and does nothing else.
 #
 # A sleeping second mate has had its agent stopped and its endpoint closed, and
 # keeps everything else: this home's task record state/<id>.meta, its own home
@@ -26,18 +26,35 @@
 # fm_secondmate_asleep_refusal, and bin/fm-spawn.sh, which refuses to launch an
 # asleep mate except for the wake transition itself.
 
+# Read <meta-file> once, in pure bash because the watcher asks on every poll:
+# FM_SECONDMATE_ASLEEP_SINCE is the recorded epoch when the file is a regular
+# second-mate task record carrying the mark (its last kind= line decides, as
+# fm_meta_get reads it), and empty otherwise.
+FM_SECONDMATE_ASLEEP_SINCE=
+_fm_secondmate_asleep_read() {  # <meta-file>
+  local meta=$1 line kind='' marked=0 since=''
+  FM_SECONDMATE_ASLEEP_SINCE=
+  [ -f "$meta" ] && [ ! -L "$meta" ] || return 1
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      kind=*) kind=${line#kind=} ;;
+      asleep=*) marked=1; since=${line#asleep=} ;;
+    esac
+  done < "$meta" 2>/dev/null || return 1
+  [ "$kind" = secondmate ] && [ "$marked" = 1 ] || return 1
+  FM_SECONDMATE_ASLEEP_SINCE=$since
+  return 0
+}
+
 # True when <meta-file> is a regular second-mate task record carrying the mark.
 fm_secondmate_asleep() {  # <meta-file>
-  local meta=$1
-  [ -f "$meta" ] && [ ! -L "$meta" ] || return 1
-  [ "$(sed -n 's/^kind=//p' "$meta" 2>/dev/null | tail -1)" = secondmate ] || return 1
-  grep -q '^asleep=' "$meta" 2>/dev/null
+  _fm_secondmate_asleep_read "$1"
 }
 
 # The epoch the mate was put to sleep, as recorded; empty when it is not asleep.
 fm_secondmate_asleep_since() {  # <meta-file>
-  fm_secondmate_asleep "$1" || return 0
-  sed -n 's/^asleep=//p' "$1" 2>/dev/null | tail -1
+  _fm_secondmate_asleep_read "$1" || return 0
+  printf '%s' "$FM_SECONDMATE_ASLEEP_SINCE"
 }
 
 # That epoch as a UTC minute for people, or the raw value when it is not a time.

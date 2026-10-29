@@ -11,9 +11,11 @@
 #      keeps this home's record, the mate's home, its backlog, and its route.
 #   2. Sleep refuses, changing nothing, while the mate has work: work under way
 #      in its home, an open request, or an unconfirmed persist.
-#   3. While asleep nothing reaches or restarts it: the session-start liveness
-#      sweep, a direct spawn or relaunch, a message, a backlog handoff, and the
-#      current-state read all step aside or refuse with the wake command.
+#   3. While asleep nothing reaches or restarts it: a direct spawn or relaunch,
+#      the control plane, a message, and a backlog handoff refuse with the wake
+#      command, and the current-state and fleet reads say it is asleep. The
+#      session-start sweep, the watcher tick, and the update pass are pinned in
+#      their own suites.
 #   4. Wake relaunches it through the normal spawn path in the same home and
 #      clears the mark; a failed launch leaves it asleep.
 #   5. Retirement of an asleep mate still works as retirement.
@@ -261,7 +263,7 @@ put_to_sleep() {
 
 # --- T3: while asleep, nothing reaches it or brings it back ------------------
 test_asleep_mate_is_left_alone() {
-  local dir out rc meta_before
+  local dir out rc meta_before verb
   dir=$(new_case asleep)
   put_to_sleep "$dir"
   meta_before=$(cat "$dir/home/state/sm1.meta")
@@ -275,6 +277,13 @@ test_asleep_mate_is_left_alone() {
   assert_contains "$out" "bin/fm-secondmate-sleep.sh wake sm1" "the relaunch refusal must name the wake command"
   out=$(FM_SECONDMATE_WAKE=sm1 in_case "$dir" "$ROOT/bin/fm-spawn.sh" sm1 --relaunch); rc=$?
   expect_code 1 "$rc" "the wake authorization must not extend to a relaunch"$'\n'"$out"
+
+  for verb in interrupt exit relaunch; do
+    out=$(in_case "$dir" "$ROOT/bin/fm-control.sh" sm1 "$verb"); rc=$?
+    expect_code 1 "$rc" "the control plane must not $verb an asleep mate"$'\n'"$out"
+    assert_contains "$out" "second mate sm1 is asleep; wake it first with bin/fm-secondmate-sleep.sh wake sm1" \
+      "the control-plane refusal must name the wake command"
+  done
 
   out=$(in_case "$dir" "$ROOT/bin/fm-send.sh" sm1 "new work for you"); rc=$?
   expect_code 1 "$rc" "a message to an asleep mate must be refused"$'\n'"$out"
@@ -303,7 +312,7 @@ test_asleep_mate_is_left_alone() {
 
   [ "$(cat "$dir/home/state/sm1.meta")" = "$meta_before" ] || fail "a refused path changed the asleep record"
   assert_no_grep 'new-window' "$dir/fake/calls" "something reopened the asleep mate's endpoint"
-  pass "T3 while asleep, spawn, relaunch, messages, and handoffs refuse with the wake command, and status reads say asleep"
+  pass "T3 while asleep, spawn, control, messages, and handoffs refuse with the wake command, and status reads say asleep"
 }
 
 # --- T4: wake relaunches it in the same home and clears the mark --------------
