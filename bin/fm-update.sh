@@ -148,6 +148,9 @@ selector_claimed() {  # <selector>
 claim_settled_secondmate() {  # <id>
   local id=$1
   selector_claimed "fm-$id" && return 0
+  # An asleep mate has no agent to restart or steer; its wake launch reads the
+  # updated home (bin/fm-secondmate-sleep-lib.sh).
+  ! fm_secondmate_asleep "$STATE/$id.meta" || return 0
   secondmate_agent_may_be_alive "$id" || return 0
   if fm_secondmate_restart_capable "$STATE/$id.meta"; then
     FF_RESTART_WINDOWS="$FF_RESTART_WINDOWS fm-$id"

@@ -732,6 +732,8 @@ fm_backlog_directory_present "$STATE" "state directory" || {
 }
 # shellcheck source=bin/fm-secondmate-nudge-lib.sh
 . "$SCRIPT_DIR/fm-secondmate-nudge-lib.sh"
+# shellcheck source=bin/fm-secondmate-sleep-lib.sh
+. "$SCRIPT_DIR/fm-secondmate-sleep-lib.sh"
 # shellcheck source=bin/fm-backend.sh
 . "$SCRIPT_DIR/fm-backend.sh"
 # shellcheck source=bin/fm-control-lib.sh
@@ -1743,6 +1745,15 @@ if [ -e "$STATE" ] || [ -L "$STATE" ]; then
   }
 elif [ "$RELAUNCH" -eq 1 ]; then
   echo "error: spawn refused: state directory does not exist at $STATE" >&2
+  exit 1
+fi
+# An asleep second mate stays down until it is woken (bin/fm-secondmate-sleep-lib.sh
+# owns the mark), so recovery, a restart, or a hand-run spawn cannot bring it back
+# behind its record. The wake transition itself names the exact id it is waking,
+# and only for a fresh launch, which republishes the record without the mark.
+if fm_secondmate_asleep "$STATE/$ID.meta" \
+  && { [ "$RELAUNCH" -eq 1 ] || [ "${FM_SECONDMATE_WAKE:-}" != "$ID" ]; }; then
+  echo "error: spawn refused: $(fm_secondmate_asleep_refusal "$ID")" >&2
   exit 1
 fi
 # Role partition: spawning NEW work is MAIN-owned while attended. A relaunch of

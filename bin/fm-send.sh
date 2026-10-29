@@ -256,6 +256,8 @@ fi
 . "$SCRIPT_DIR/fm-task-inbox-lib.sh"
 # shellcheck source=bin/fm-timeout-lib.sh
 . "$SCRIPT_DIR/fm-timeout-lib.sh"
+# shellcheck source=bin/fm-secondmate-sleep-lib.sh
+. "$SCRIPT_DIR/fm-secondmate-sleep-lib.sh"
 
 FM_GUARD_CONTINUE_LINE='This is a supervision warning only; the requested message WILL still be sent.' "$SCRIPT_DIR/fm-guard.sh" || true
 
@@ -442,6 +444,14 @@ RAW_TARGET=$1
 fm_send_resolve_target "$RAW_TARGET" || exit 1
 T=$RESOLVED_TARGET
 shift
+
+# An asleep second mate has no agent to read anything and its endpoint is
+# closed, so nothing is recorded or typed for it until it is woken
+# (bin/fm-secondmate-sleep-lib.sh).
+if [ -n "$TARGET_META" ] && fm_secondmate_asleep "$TARGET_META"; then
+  echo "error: $(fm_secondmate_asleep_refusal "$(fm_send_id_from_meta "$TARGET_META")"); nothing was sent" >&2
+  exit 1
+fi
 
 # Supervision lease guard: a steer is overlap territory between the two Pi
 # supervision actors, so refuse while the OTHER actor holds this task's live

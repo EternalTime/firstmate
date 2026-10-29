@@ -34,7 +34,8 @@
 #      (fm-on.sh + fm-remote-secondmate-control.sh state). alive falls through
 #      to the routed status log; dead/missing report the remote verdict; an
 #      unreachable or unreadable remote reports unknown-remote, never a false
-#      gone/dead.
+#      gone/dead. An asleep secondmate (bin/fm-secondmate-sleep-lib.sh) reports
+#      paused with its wake command, without reading any endpoint.
 #   2. Matching no-mistakes run for this crew's branch AND current code identity,
 #      active or terminal (from `axi status`, or the coarse `no-mistakes runs`
 #      fallback)? Branch name alone is not enough: a historical run on a reused
@@ -177,6 +178,8 @@ STATE="${FM_STATE_OVERRIDE:-$FM_HOME/state}"
 . "$SCRIPT_DIR/fm-busy-lib.sh"
 # shellcheck source=bin/fm-nm-run-lib.sh
 . "$SCRIPT_DIR/fm-nm-run-lib.sh"
+# shellcheck source=bin/fm-secondmate-sleep-lib.sh
+. "$SCRIPT_DIR/fm-secondmate-sleep-lib.sh"
 # shellcheck source=bin/fm-pr-lib.sh
 . "$SCRIPT_DIR/fm-pr-lib.sh"
 # shellcheck source=bin/fm-timeout-lib.sh
@@ -224,6 +227,13 @@ KIND=$(meta_value kind)
 HARNESS=$(meta_value harness)
 REMOTE_HOST=$(meta_value remote_host)
 [ -n "$KIND" ] || KIND=ship
+
+# An asleep second mate's agent was stopped and its endpoint closed on purpose,
+# so it is a declared wait for work rather than a gone endpoint
+# (bin/fm-secondmate-sleep-lib.sh).
+if fm_secondmate_asleep "$META"; then
+  emit paused none "asleep since $(fm_secondmate_asleep_since_utc "$META") until there is work for it; wake with $(fm_secondmate_wake_command "$ID")"
+fi
 
 # A torn-down (or never-created) worktree has no current state to read. A
 # remote secondmate's recorded worktree is a path on ITS host, so the local

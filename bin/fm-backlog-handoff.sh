@@ -97,6 +97,8 @@ MAIN_BACKLOG="$DATA/backlog.md"
 . "$SCRIPT_DIR/fm-public-followup-lib.sh"
 # shellcheck source=bin/fm-pending-reply-lib.sh
 . "$SCRIPT_DIR/fm-pending-reply-lib.sh"
+# shellcheck source=bin/fm-secondmate-sleep-lib.sh
+. "$SCRIPT_DIR/fm-secondmate-sleep-lib.sh"
 
 RECEIVER_WAKE_MESSAGE='New routed work is in your backlog. Run bin/fm-session-start.sh now, then act on the routed task.'
 
@@ -141,6 +143,12 @@ else
     ;;
   esac
   shift
+  # Work handed to an asleep mate would sit in a backlog nobody reads, so the
+  # move waits for the wake rather than stranding the items there.
+  if fm_secondmate_asleep "$STATE/$ID.meta"; then
+    echo "error: $(fm_secondmate_asleep_refusal "$ID"); no backlog item was moved" >&2
+    exit 1
+  fi
 fi
 
 secondmate_home() {
