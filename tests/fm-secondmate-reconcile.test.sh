@@ -232,6 +232,28 @@ test_an_inventory_mismatch_asks_the_mate_once_per_window() {
   pass "a home in mismatch is asked once, and later recaps stay silent"
 }
 
+test_an_asleep_mate_is_not_asked_and_its_request_is_retired() {
+  local home mate fakebin snap out
+  { read -r home; read -r mate; read -r fakebin; } < <(make_main_home asleep mate)
+  # Put to sleep by bin/fm-secondmate-sleep.sh: no agent reads its inbox, and
+  # its own session start reconciles its books once it is woken.
+  printf 'asleep=%s\n' "$(date +%s)" >> "$home/state/mate.meta"
+  snap="$home/snapshot.json"
+  write_snapshot "$snap" mate '{"kind":"orphan_in_flight","ids":["stale-scout"]}'
+
+  out=$(run_notify "$home" "$fakebin" asleep "$snap") || fail "an asleep mate made the notify fail: $out"
+  assert_contains "$out" "asleep: mate orphan_in_flight" "the notify did not report the mate as asleep: $out"
+  [ "$(inbox_records "$home/state" mate)" -eq 0 ] || fail "an asleep mate was sent a reconcile instruction"
+  assert_absent "$home/state/mate.reconcile-nudged" "an asleep mate's cooldown was started"
+
+  FM_HOME="$home" FM_STATE_OVERRIDE="$home/state" "$RECONCILE" request --snapshot "$snap" >/dev/null \
+    || fail "the reconcile request could not be queued"
+  out=$(PATH="$fakebin:$PATH" FM_HOME="$home" FM_ROOT_OVERRIDE="$ROOT" FM_STATE_OVERRIDE="$home/state" \
+    "$RECONCILE" process-requests) || fail "a request for an asleep mate was deferred instead of retired: $out"
+  assert_contains "$out" "processed: 1 deferred: 0" "a request for an asleep mate was not retired: $out"
+  pass "an asleep mate is not asked to reconcile, and its queued request is retired rather than retried"
+}
+
 test_a_mismatch_still_there_after_the_window_earns_one_more_nudge() {
   local home mate fakebin snap out
   { read -r home; read -r mate; read -r fakebin; } < <(make_main_home window mate)
@@ -990,6 +1012,7 @@ test_reconcile_request_requires_one_snapshot_document
 test_reconcile_requests_coalesce_per_target_until_delivery
 test_bearings_request_returns_before_remote_delivery_and_supervision_sends_later
 test_an_inventory_mismatch_asks_the_mate_once_per_window
+test_an_asleep_mate_is_not_asked_and_its_request_is_retired
 test_a_mismatch_still_there_after_the_window_earns_one_more_nudge
 test_the_cooldown_starts_when_delivery_finishes
 test_the_window_is_four_hours

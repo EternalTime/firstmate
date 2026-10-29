@@ -2,8 +2,8 @@
 name: secondmate-provisioning
 description: >-
   Agent-only reference for persistent secondmate setup and retirement.
-  Use when creating, seeding, validating, launching, recovering, handing backlog to, pushing inherited local material into, or retiring a secondmate home, or when editing data/secondmates.md.
-  Covers local leases, whole-home remote routes, transactional seeding, record intake for an existing or inherited domain, project clone restrictions, secondmate harness pins, inherited local-material push, idle charter, handoff helper, and teardown safety.
+  Use when creating, seeding, validating, launching, recovering, handing backlog to, pushing inherited local material into, putting to sleep, waking, or retiring a secondmate home, or when editing data/secondmates.md.
+  Covers local leases, whole-home remote routes, transactional seeding, record intake for an existing or inherited domain, project clone restrictions, secondmate harness pins, inherited local-material push, idle charter, handoff helper, sleep and wake, and teardown safety.
 user-invocable: false
 metadata:
   internal: true
@@ -11,7 +11,7 @@ metadata:
 
 # secondmate-provisioning
 
-Use this reference before creating, seeding, validating, launching, handing backlog to, recovering, pushing inherited local material into, or retiring a persistent secondmate, and before editing `data/secondmates.md`.
+Use this reference before creating, seeding, validating, launching, handing backlog to, recovering, pushing inherited local material into, putting to sleep, waking, or retiring a persistent secondmate, and before editing `data/secondmates.md`.
 
 Keep the always-inline routing rules in `AGENTS.md` authoritative: route by natural-language `scope:` and secondmates are idle by default.
 
@@ -219,6 +219,8 @@ A project's delivery mode never decides whether its item may move, so a `local-o
 
 ## Recovery
 
+An asleep secondmate is not a dead direct report: its endpoint was closed on purpose, so wake it as described under "Sleep and wake" rather than respawning it.
+
 For local `kind=secondmate` meta with no window, treat the secondmate as a dead persistent direct report and respawn it with:
 
 ```sh
@@ -243,6 +245,20 @@ The main firstmate reconciles only direct reports.
 Each secondmate is a firstmate in its own home, so it runs recovery on startup and reconciles its own crewmates.
 A secondmate's recovery reconciles only work that is already its own and then idles.
 It never initiates a survey or audit during recovery.
+
+## Sleep and wake
+
+Sleep is for a persistent secondmate that has no work for now and should cost nothing until it does.
+Its agent is stopped and its endpoint closed, while this home's task record, its home with every record and its backlog, its lease, and its `data/secondmates.md` route all stay exactly as they are.
+Put a local secondmate to sleep with `bin/fm-secondmate-sleep.sh sleep <id>` and bring it back where it left off with `bin/fm-secondmate-sleep.sh wake <id>`; the script's header owns the transition, its refusals, and its exit codes.
+Sleep refuses while the secondmate still has work: work under way in its home, an unanswered request from this home, or handed-off work it has not yet been told about.
+A running secondmate is first asked to write down the open work it holds only in its conversation, through the same persist gate a restart uses.
+Wake relaunches it in its own home through the ordinary `bin/fm-spawn.sh <id> --secondmate` path, so it re-resolves its configured harness, converges its home and inherited local material, and reconciles its own records at startup.
+While it is asleep nothing restarts or reaches it: session-start and watcher liveness recovery, session-start convergence and nudges, inherited-material push, and `/updatefirstmate`'s restart all leave it alone and raise no stale or dead alert, and a message, a backlog handoff, or a spawn for its id refuses with the wake command.
+[`bin/fm-secondmate-sleep-lib.sh`](../../../bin/fm-secondmate-sleep-lib.sh) owns the asleep mark those paths read.
+To route new in-scope work to an asleep secondmate, wake it first and then route as usual.
+A remotely placed secondmate cannot be put to sleep from this home, because its agent runs on another host.
+Retiring an asleep secondmate is ordinary retirement, below.
 
 ## Retirement and teardown
 
