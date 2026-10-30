@@ -19,6 +19,9 @@
 #   4. Wake relaunches it through the normal spawn path in the same home and
 #      clears the mark; a failed launch leaves it asleep.
 #   5. Retirement of an asleep mate still works as retirement.
+#   6. Sleep waits for the turn that carried the persist answer to finish
+#      before stopping the agent, and a retried sleep reuses that answer
+#      instead of asking the mate again.
 set -u
 
 # shellcheck source=tests/lib.sh
@@ -38,7 +41,9 @@ TMP_ROOT=$(cd "$TMP_ROOT" && pwd -P)
 # into the bare shell starts one, kill-window closes the window, and new-window
 # opens it again with a bare shell unless $D/fail-launch makes it fail. When armed, the live mate ANSWERS a
 # doorbell by reporting on the parent channel with the correlation token the
-# request carried - a real status append read by the real pending-reply code.
+# newest request carried - a real status append read by the real pending-reply code.
+# $D/busy-after-answer makes the pane render a busy turn for that many captures
+# after the answer, and $D/ignore-exit makes the agent ignore its exit command.
 make_stub() {  # <case-dir>
   local fb="$1/fakebin"
   mkdir -p "$fb"
@@ -63,14 +68,17 @@ case "${1:-}" in
     [ "$literal" = 1 ] || { printf '%s\n' "$payload" >> "$D/keys"; exit 0; }
     printf '%s\n' "$payload" >> "$D/literal"
     case "$payload" in
-      /exit|/quit) printf 'zsh' > "$D/command" ;;
+      /exit|/quit)
+        printf 'exit-typed busy=%s\n' "$(cat "$D/busy-reads" 2>/dev/null || echo 0)" >> "$D/events"
+        [ -f "$D/ignore-exit" ] || printf 'zsh' > "$D/command" ;;
       ': Firstmate instruction waiting: list '*)
         printf 'doorbell\n' >> "$D/rings"
         if [ -f "$D/answer-inbox" ]; then
           corr=$(cat "$(cat "$D/answer-inbox")"/*.msg 2>/dev/null \
-            | grep -oE 'corr=[0-9a-f]{16}' | head -1)
+            | grep -oE 'corr=[0-9a-f]{16}' | tail -1)
           [ -z "$corr" ] || printf 'done [%s]: open records written down\n' "$corr" \
             >> "$(cat "$D/answer-status")"
+          [ ! -f "$D/busy-after-answer" ] || cp "$D/busy-after-answer" "$D/busy-reads"
         fi
         ;;
       *) [ "$(cat "$D/command")" != zsh ] || printf 'claude' > "$D/command" ;;
@@ -86,7 +94,14 @@ case "${1:-}" in
       esac
     done
     printf 'fakepane\n'; exit 0 ;;
-  capture-pane) printf '╭────╮\n│    │\n╰────╯\n'; exit 0 ;;
+  capture-pane)
+    left=$(cat "$D/busy-reads" 2>/dev/null || echo 0)
+    if [ "$left" -gt 0 ]; then
+      printf '%s' "$((left - 1))" > "$D/busy-reads"
+      printf '✻ Working… (esc to interrupt)\n'
+      exit 0
+    fi
+    printf '╭────╮\n│    │\n╰────╯\n'; exit 0 ;;
   list-windows) printf 'main\n'; cat "$D/windows" 2>/dev/null; exit 0 ;;
   kill-window)
     : > "$D/windows"
@@ -147,6 +162,7 @@ new_case() {
   : > "$dir/fake/keys"
   : > "$dir/fake/rings"
   : > "$dir/fake/calls"
+  : > "$dir/fake/events"
   make_stub "$dir"
   printf '%s\n' "$dir"
 }
@@ -360,7 +376,54 @@ test_asleep_mate_retires() {
   pass "T5 retiring an asleep mate removes its record, route, and home exactly as retirement does"
 }
 
+# --- T6: sleep lets the answering turn finish, and a retry reuses the answer --
+test_sleep_settles_the_turn_and_reuses_the_answer() {
+  local dir out rc rec
+  dir=$(new_case settle)
+  arm_answer "$dir"
+  printf '3' > "$dir/fake/busy-after-answer"
+  out=$(sleep_mate "$dir"); rc=$?
+  expect_code 0 "$rc" "a mate that answers mid-turn should still go to sleep"$'\n'"$out"
+  assert_grep 'exit-typed busy=0' "$dir/fake/events" \
+    "the exit command was typed while the mate was still finishing its reply: $(cat "$dir/fake/events")"
+  [ "$(cat "$dir/fake/busy-reads")" = 0 ] || fail "sleep stopped watching before the busy turn ended"
+
+  dir=$(new_case reuse)
+  arm_answer "$dir"
+  touch "$dir/fake/ignore-exit"
+  out=$(sleep_mate "$dir"); rc=$?
+  expect_code 1 "$rc" "a stop that does not take must not mark the mate asleep"$'\n'"$out"
+  [ -z "$(asleep_line "$dir")" ] || fail "a failed stop marked the mate asleep"
+  [ "$(grep -c . "$dir/fake/rings")" -eq 1 ] || fail "the first sleep should ask exactly once"
+  rm -f "$dir/fake/ignore-exit"
+  out=$(sleep_mate "$dir"); rc=$?
+  expect_code 0 "$rc" "a retried sleep should reuse the answer and finish"$'\n'"$out"
+  [ -n "$(asleep_line "$dir")" ] || fail "the retried sleep did not mark the mate asleep"
+  [ "$(grep -c . "$dir/fake/rings")" -eq 1 ] \
+    || fail "the retried sleep asked the mate to persist again instead of reusing its answer"
+
+  dir=$(new_case reuse-stale)
+  arm_answer "$dir"
+  touch "$dir/fake/ignore-exit"
+  out=$(sleep_mate "$dir"); rc=$?
+  expect_code 1 "$rc" "the fixture stop should not take"$'\n'"$out"
+  rm -f "$dir/fake/ignore-exit"
+  out=$(in_case "$dir" "$ROOT/bin/fm-send.sh" sm1 "one more thing to note"); rc=$?
+  expect_code 0 "$rc" "a message should reach the mate"$'\n'"$out"
+  # The mate answered it at once; settle that expectation as the watcher would.
+  for rec in "$dir/home/state/pending-replies"/*; do
+    bash -c '. "$1/bin/fm-pending-reply-lib.sh"; fm_pending_reply_try_resolve "$2" "$3"' _ \
+      "$ROOT" "$dir/home/state" "$(basename "$rec")" || true
+  done
+  out=$(sleep_mate "$dir"); rc=$?
+  expect_code 0 "$rc" "a sleep after new conversation should ask again and finish"$'\n'"$out"
+  [ "$(grep -c . "$dir/fake/rings")" -eq 3 ] \
+    || fail "a message after the answer must make sleep ask again (rings: $(grep -c . "$dir/fake/rings"))"
+  pass "T6 sleep waits for the answering turn to end before stopping, and a retry reuses a still-current answer"
+}
+
 test_sleep_persists_then_stops_and_keeps_records
+test_sleep_settles_the_turn_and_reuses_the_answer
 test_sleep_refuses_while_the_mate_has_work
 test_asleep_mate_is_left_alone
 test_wake_relaunches_in_the_same_home
