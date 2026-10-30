@@ -1,0 +1,7 @@
+ok - T1 sleep persists first, stops the agent, closes the endpoint, and keeps every record
+ok - T6 sleep waits for the answering turn to end before stopping, and a retry reuses a still-current answer
+ok - T2 sleep refuses, changing nothing, while the mate has work or has not confirmed its records
+ok - T3 while asleep, spawn, control, messages, and handoffs refuse with the wake command, and status reads say asleep
+ok - T4 wake relaunches the mate in its own home through the normal spawn path and clears the mark
+ok - T5 retiring an asleep mate removes its record, route, and home exactly as retirement does
+# all fm-secondmate-sleep tests passed

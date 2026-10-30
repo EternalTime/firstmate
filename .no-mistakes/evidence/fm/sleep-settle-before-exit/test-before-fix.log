@@ -1,0 +1,3 @@
+ok - T1 sleep persists first, stops the agent, closes the endpoint, and keeps every record
+not ok - a mate that answers mid-turn should still go to sleep
+error: second mate sm1 was not put to sleep: its agent could not be stopped: task sm1's composer state is 'unknown', not proven empty; refusing to type the /exit exit command because it could concatenate onto existing text. Clear the composer, then retry 'exit'. Nothing else was changed: expected exit 0, got 1
