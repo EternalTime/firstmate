@@ -26,7 +26,12 @@
 #          /stow skill's "Open-record persistence" section
 #          (bin/fm-secondmate-restart-lib.sh owns that instruction), and nothing
 #          is stopped until that mate's own correlated answer lands on the parent
-#          channel. The agent is then stopped through the control plane's
+#          channel and the turn that carried it has finished, because the
+#          answer lands before the reply does and a stop mid-reply would
+#          interrupt it. A retried sleep reuses an answer this same agent gave
+#          within FM_SECONDMATE_PERSIST_REUSE seconds when no other message has
+#          reached it since, rather than asking again. The agent is then
+#          stopped through the control plane's
 #          verified exit (bin/fm-control.sh <id> exit), its endpoint is closed,
 #          and the asleep mark is published into the task record. An agent that
 #          is already stopped has no conversation left to persist and skips
@@ -57,9 +62,12 @@
 # a running mate nothing supervises.
 #
 # Environment knobs:
-#   FM_SECONDMATE_PERSIST_WAIT  seconds to wait for the persist answer (900),
-#                               shared with bin/fm-secondmate-restart.sh
+#   FM_SECONDMATE_PERSIST_WAIT  seconds to wait for the persist answer (shared
+#                               with restart) and, here, its turn to end (900)
 #   FM_SECONDMATE_PERSIST_POLL  seconds between checks of that answer (5)
+#   FM_SECONDMATE_PERSIST_REUSE seconds a persist answer stays reusable by a
+#                               retried sleep when nothing reached the mate
+#                               since (900)
 #
 # Exit status: 0 the mate is now in the requested state (or already was);
 # 1 refused or failed, with the outcome stated; 2 invalid use; 4 the mate is
@@ -70,7 +78,7 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
-  sed -n '2,67{s/^# \{0,1\}//;p;}' "$0"
+  sed -n '2,75{s/^# \{0,1\}//;p;}' "$0"
 }
 
 case "${1:-}" in
@@ -117,8 +125,10 @@ fm_lease_forbid_branch "second mate $VERB (fm-secondmate-sleep)"
 
 PERSIST_WAIT=${FM_SECONDMATE_PERSIST_WAIT:-900}
 PERSIST_POLL=${FM_SECONDMATE_PERSIST_POLL:-5}
+PERSIST_REUSE=${FM_SECONDMATE_PERSIST_REUSE:-900}
 case "$PERSIST_WAIT" in ''|*[!0-9]*) echo "error: FM_SECONDMATE_PERSIST_WAIT must be a non-negative integer: $PERSIST_WAIT" >&2; exit 2 ;; esac
 case "$PERSIST_POLL" in ''|*[!0-9]*|0) echo "error: FM_SECONDMATE_PERSIST_POLL must be a positive integer: $PERSIST_POLL" >&2; exit 2 ;; esac
+case "$PERSIST_REUSE" in ''|*[!0-9]*) echo "error: FM_SECONDMATE_PERSIST_REUSE must be a non-negative integer: $PERSIST_REUSE" >&2; exit 2 ;; esac
 
 META="$STATE/$ID.meta"
 WAKE_CMD=$(fm_secondmate_wake_command "$ID")
@@ -209,11 +219,88 @@ close_endpoint() {
   [ "$ENDPOINT_STATE" = missing ]
 }
 
+# Print the newest sleep persist answer this incarnation of the mate gave within
+# PERSIST_REUSE seconds, when no other message has reached it since that request
+# was delivered; print nothing otherwise. A sleep whose stop step refused after
+# the mate answered can then be retried without asking it again.
+reusable_persist_answer() {
+  local spawn_epoch now rec corr delivered resolved best='' best_at=0 msg seq n
+  spawn_epoch=$(fm_meta_get "$META" spawn_gen)
+  spawn_epoch=${spawn_epoch#s}
+  spawn_epoch=${spawn_epoch%%.*}
+  case "$spawn_epoch" in ''|*[!0-9]*) return 0 ;; esac
+  now=$(date +%s)
+  for rec in "$(fm_pending_reply_dir "$STATE")"/*; do
+    [ -f "$rec" ] && [ ! -L "$rec" ] || continue
+    [ "$(fm_pending_reply_get "$rec" task_id)" = "$ID" ] || continue
+    [ "$(fm_pending_reply_get "$rec" phase)" = resolved ] || continue
+    case "$(fm_pending_reply_get "$rec" request_summary)" in
+      "${SLEEP_PERSIST_REQUEST:0:60}"*) ;;
+      *) continue ;;
+    esac
+    delivered=$(fm_pending_reply_get "$rec" delivered_epoch)
+    resolved=$(fm_pending_reply_get "$rec" resolved_epoch)
+    case "$delivered$resolved" in ''|*[!0-9]*) continue ;; esac
+    [ "$delivered" -ge "$spawn_epoch" ] && [ $((now - resolved)) -le "$PERSIST_REUSE" ] || continue
+    [ "$resolved" -gt "$best_at" ] || continue
+    best=$rec
+    best_at=$resolved
+  done
+  [ -n "$best" ] || return 0
+  corr=$(fm_pending_reply_get "$best" corr_id)
+  # Inbox messages are numbered in delivery order, so any message numbered
+  # after the request's own reached the mate after it answered.
+  seq=$(grep -lF "corr=$corr" "$STATE/$ID.inbox"/*.msg "$STATE/$ID.inbox"/handled/*.msg 2>/dev/null | tail -1)
+  seq=$(basename "${seq:-x}" .msg)
+  case "$seq" in ''|*[!0-9]*) return 0 ;; esac
+  for msg in "$STATE/$ID.inbox"/*.msg "$STATE/$ID.inbox"/handled/*.msg; do
+    [ -f "$msg" ] || continue
+    n=$(basename "$msg" .msg)
+    case "$n" in ''|*[!0-9]*) return 0 ;; esac
+    [ $((10#$n)) -le $((10#$seq)) ] || return 0
+  done
+  printf '%s' "$corr"
+}
+
+# Wait, within the remaining persist budget, until the mate has finished the
+# turn in which it answered: its answer lands on the parent channel before its
+# reply finishes, and stopping it mid-reply interrupts that reply and leaves its
+# composer unreadable, so the stop would refuse. Returns non-zero with
+# PERSIST_REASON set.
+settle_turn() {  # <deadline>
+  local deadline=$1 obs fallback=0
+  while :; do
+    obs=$(fm_pending_reply_backend_observation "$ENDPOINT_BACKEND" "$ENDPOINT_TARGET" \
+      "fm-$ID" "$(fm_meta_get "$META" harness)")
+    case "$obs" in
+      idle) return 0 ;;
+      fallback-idle)
+        # A rendered idle alone is weak; two in a row is a settled screen.
+        fallback=$((fallback + 1))
+        [ "$fallback" -lt 2 ] || return 0
+        ;;
+      *) fallback=0 ;;
+    esac
+    if [ "$(date +%s)" -ge "$deadline" ]; then
+      PERSIST_REASON="it wrote down its open work but was still finishing its reply when the wait ran out; retry once it is idle, and that answer will be reused rather than asked for again"
+      return 1
+    fi
+    sleep "$PERSIST_POLL"
+  done
+}
+
 # Ask a running mate to write down what it holds only in its conversation, and
 # wait for its own correlated answer. Returns non-zero with PERSIST_REASON set.
 PERSIST_REASON=
+PERSIST_REUSED=
 persist_open_work() {
   local corr send_out deadline
+  deadline=$(($(date +%s) + PERSIST_WAIT))
+  PERSIST_REUSED=$(reusable_persist_answer)
+  if [ -n "$PERSIST_REUSED" ]; then
+    settle_turn "$deadline"
+    return
+  fi
   if ! corr=$(fm_pending_reply_create "$FM_HOME" "$STATE" "$ID" "$SLEEP_PERSIST_REQUEST"); then
     PERSIST_REASON="its answer about its open work cannot be tracked, so a clean sleep could not be proven"
     return 1
@@ -225,12 +312,11 @@ persist_open_work() {
     PERSIST_REASON="the request to write down its open work could not be delivered: $(reported_reason "$send_out")"
     return 1
   fi
-  deadline=$(($(date +%s) + PERSIST_WAIT))
   while :; do
-    fm_pending_reply_try_resolve "$STATE" "$corr" && return 0
+    fm_pending_reply_try_resolve "$STATE" "$corr" && { settle_turn "$deadline"; return; }
     if [ "$(date +%s)" -ge "$deadline" ]; then
       # The final recheck lets an answer that landed during the last wait win.
-      fm_pending_reply_try_resolve "$STATE" "$corr" && return 0
+      fm_pending_reply_try_resolve "$STATE" "$corr" && { settle_turn "$deadline"; return; }
       PERSIST_REASON="it did not confirm within ${PERSIST_WAIT}s that its open work is written down; its answer may still arrive, so retry once it has"
       return 1
     fi
