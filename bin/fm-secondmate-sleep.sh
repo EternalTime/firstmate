@@ -62,8 +62,8 @@
 # a running mate nothing supervises.
 #
 # Environment knobs:
-#   FM_SECONDMATE_PERSIST_WAIT  seconds to wait for the persist answer (900),
-#                               shared with bin/fm-secondmate-restart.sh
+#   FM_SECONDMATE_PERSIST_WAIT  seconds to wait for the persist answer (shared
+#                               with restart) and, here, its turn to end (900)
 #   FM_SECONDMATE_PERSIST_POLL  seconds between checks of that answer (5)
 #   FM_SECONDMATE_PERSIST_REUSE seconds a persist answer stays reusable by a
 #                               retried sleep when nothing reached the mate
