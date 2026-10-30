@@ -142,6 +142,14 @@ mark_surface_reported() {  # <status-file> <reported-signature>
   status_presentation_marker_report "$(_hb_surfaced_path "$task")" "$2"
 }
 
+# Whether <task>'s metadata still records <window> as its endpoint. Teardown can
+# remove a task while a watcher holds its window, so an observation of a window
+# no live record names belongs to a retired pane and must never be surfaced.
+window_owned_by_live_task() {  # <window> <task>
+  [ -n "$2" ] && [ -f "$STATE/$2.meta" ] \
+    && [ "$(fm_backend_target_of_meta "$STATE/$2.meta")" = "$1" ]
+}
+
 # Act on a fresh actionable transition from a push-capable backend.
 handle_push_transition() {  # <backend> <session> <record>
   local backend=$1 session=$2 record=$3 pane_id to window task reason span_record rest surface_end='' surface_ident=''
@@ -150,6 +158,11 @@ handle_push_transition() {  # <backend> <session> <record>
   [ -n "$pane_id" ] || { sleep 1; return; }
   window="$session:$pane_id"
   task=$(window_to_task "$window" "$STATE")
+  if ! window_owned_by_live_task "$window" "$task"; then
+    triage_log "absorbed push $to (no live task record): $window"
+    fm_backend_commit_transition "$backend" "$STATE" "$session" "$record" || exit 1
+    return
+  fi
   # A declared wait already names the human this transition would report: an
   # external dependency, or the captain a verified hold transferred the work to.
   # Either way the wait is durably recorded, so absorb the immediate escalation
